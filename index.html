@@ -59,7 +59,10 @@ body{font-family:'Segoe UI',Tahoma,Geneva,sans-serif;background:var(--bg);color:
   color:#fff;padding:20px 0;text-align:center;
   box-shadow:0 4px 20px rgba(27,107,147,0.2);
 }
-.sel-header .header-inner{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+.sel-header .header-inner{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;position:relative}
+.btn-home{position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:8px 16px;border-radius:24px;font-size:.85em;font-weight:600;cursor:pointer;transition:all .25s;display:inline-flex;align-items:center;gap:6px}
+.btn-home:hover{background:rgba(255,255,255,.3);transform:translateY(-50%) scale(1.05);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+@media(max-width:480px){.btn-home{position:static;transform:none;margin-top:8px}.btn-home:hover{transform:scale(1.05)}}
 .header-logo{width:52px;height:52px;object-fit:contain}
 .sel-header h1{font-size:1.3em;font-weight:800}
 .sel-header p{font-size:.82em;opacity:.85;margin-top:2px}
@@ -386,6 +389,49 @@ thead th:nth-child(9){width:80px}
 .manual-tip h4{margin:0 0 8px;font-size:.95em;color:var(--primary)}
 .manual-tip ul{margin:0;padding-left:18px;font-size:.85em;color:#555;line-height:1.7}
 .manual-divider{height:1px;background:linear-gradient(to right,transparent,var(--border),transparent);margin:20px 0}
+.spell-errors{margin-top:6px;font-size:.9em;line-height:1.8}
+.lang-tag{display:inline-block;font-size:.7em;font-weight:700;padding:1px 7px;border-radius:8px;margin-right:6px;vertical-align:middle}
+.lang-tag.lang-th{background:#e3f2fd;color:#1565c0}
+.lang-tag.lang-en{background:#fff3e0;color:#e65100}
+.bad-word{background:#fdedec;color:#c0392b;padding:2px 8px;border-radius:4px;font-weight:700;text-decoration:line-through;text-decoration-color:#c0392b}
+.good-word{background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:4px;font-weight:700}
+.meaningless-tag{background:#f3e8ff;color:#6d28d9;padding:2px 8px;border-radius:4px;font-weight:700;font-size:.9em}
+.audit-progress-wrap{margin:14px 0 4px;padding:0}
+.audit-progress-label{display:flex;justify-content:space-between;align-items:center;font-size:.88em;color:#475569;margin-bottom:6px;font-weight:600}
+.audit-progress-pct{font-size:1.05em;font-weight:800;color:var(--primary)}
+.audit-progress-bar{height:14px;background:#edf2f7;border-radius:10px;overflow:hidden;position:relative;box-shadow:inset 0 1px 3px rgba(0,0,0,.08)}
+.audit-progress-fill{height:100%;background:#e74c3c;border-radius:10px;transition:width .5s cubic-bezier(.4,0,.2,1),background .5s;position:relative;overflow:hidden;min-width:0}
+.audit-progress-fill::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:shimmer 2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.audit-progress-msg{font-size:.78em;color:#64748b;margin-top:4px;text-align:center;font-style:italic}
+.audit-rules-section{margin-top:8px}
+.audit-rules-header{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#1B6B93,#34a0a4);color:#fff;padding:16px 20px;border-radius:14px;margin-bottom:14px}
+.audit-rules-header h3{margin:0;font-size:1.05em;font-weight:700;line-height:1.4}
+.rules-icon{font-size:1.6em}
+.audit-rules-intro{font-size:.88em;color:#475569;margin-bottom:18px;text-align:center;font-style:italic;line-height:1.6}
+.rule-card{background:#fff;border-radius:12px;padding:0;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;border:1px solid #e2e8f0}
+.rule-card-hdr{display:flex;align-items:center;gap:12px;padding:12px 16px;color:#fff;border-radius:12px 12px 0 0}
+.rule-card-hdr h4{margin:0;font-size:.95em;font-weight:700;line-height:1.4}
+.rule-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.5);border-radius:50%;font-weight:800;font-size:.9em;flex-shrink:0}
+.rule-red .rule-card-hdr{background:linear-gradient(135deg,#e74c3c,#c0392b)}
+.rule-orange .rule-card-hdr{background:linear-gradient(135deg,#f39c12,#e67e22)}
+.rule-purple .rule-card-hdr{background:linear-gradient(135deg,#9b59b6,#8e44ad)}
+.rule-blue .rule-card-hdr{background:linear-gradient(135deg,#3498db,#2980b9)}
+.rule-green .rule-card-hdr{background:linear-gradient(135deg,#27ae60,#229954)}
+.rule-teal .rule-card-hdr{background:linear-gradient(135deg,#16a085,#1abc9c)}
+.rule-pink .rule-card-hdr{background:linear-gradient(135deg,#e91e63,#c2185b)}
+.rule-body{padding:14px 16px;font-size:.88em;line-height:1.7;color:#334155}
+.rule-dont{background:#fdedec;padding:10px 12px;border-radius:8px;margin-bottom:8px;border-left:3px solid #c0392b}
+.rule-do{background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:8px;border-left:3px solid #27ae60}
+.rule-example{background:#fff8e1;padding:10px 12px;border-radius:8px;border-left:3px solid #f39c12;font-size:.95em;color:#5d4037;margin-top:8px}
+.rule-example.example-full{margin-top:10px;line-height:1.8}
+.rule-list{margin:0;padding-left:18px;font-size:.92em}
+.rule-list li{margin-bottom:8px;line-height:1.7}
+.audit-summary-box{background:linear-gradient(135deg,#e3f2fd,#bbdefb);border-radius:14px;padding:18px 22px;margin-top:18px;border-left:5px solid #1B6B93}
+.audit-summary-box h4{margin:0 0 10px;color:#0d47a1;font-size:1em}
+.audit-summary-box .formula-line{font-size:.98em;color:#1565c0;text-align:center;background:#fff;padding:10px;border-radius:8px;margin:8px 0 12px;letter-spacing:.5px}
+.audit-summary-box ul{margin:0;padding-left:18px;font-size:.88em;color:#334155;line-height:1.8}
+.audit-summary-box ul li b{color:#1565c0;display:inline-block;min-width:60px}
 </style>
 </head>
 <body>
@@ -408,6 +454,7 @@ thead th:nth-child(9){width:80px}
         <h1>Internal Audit Checklist</h1>
         <p>บริษัท &#xe19;&#xe49;&#xe33;&#xe15;&#xe32;&#xe25;&#xe21;&#xe34;&#xe15;&#xe23;&#xe25;&#xe32;&#xe27; &#xe08;&#xe33;&#xe01;&#xe31;&#xe14;</p>
       </div>
+      <button class="btn-home" onclick="goHome()" title="กลับหน้าแรก">&#x1F3E0; หน้าแรก</button>
     </div>
   </div>
   <div class="sel-container">
@@ -472,6 +519,14 @@ thead th:nth-child(9){width:80px}
         <div class="stat-box stat-c"><div class="num" id="sC">0</div><div class="lbl">C (Conformity)</div></div>
         <div class="stat-box stat-nc"><div class="num" id="sNC">0</div><div class="lbl">NC (Non-Conformity)</div></div>
         <div class="stat-box stat-b"><div class="num" id="sB">0</div><div class="lbl">B (Observe)</div></div>
+      </div>
+      <div class="audit-progress-wrap">
+        <div class="audit-progress-label">
+          <span>&#x1F4CA; ความคืบหน้าการตรวจ <span id="progDone">0</span>/<span id="progTotal">0</span> ข้อ</span>
+          <span class="audit-progress-pct" id="progPct">0%</span>
+        </div>
+        <div class="audit-progress-bar"><div class="audit-progress-fill" id="progFill" style="width:0%"></div></div>
+        <div class="audit-progress-msg" id="progMsg">&#x1F4AA; เริ่มต้นกันเลย! ทีละข้อ ทำได้แน่นอน</div>
       </div>
     </div>
     <div class="card" id="tableCard">
@@ -9855,6 +9910,11 @@ function goToSelection(){
     sp.style.display='block';sp.style.animation='fadeIn .4s ease forwards';
   },360);
 }
+function goHome(){
+  document.getElementById('selectionPage').style.display='none';
+  var wp=document.getElementById('welcomePage');
+  wp.style.display='flex';wp.style.animation='fadeIn .4s ease forwards';
+}
 function confirmDept(){
   var sel=document.getElementById('deptSelMain');
   var idx=parseInt(sel.value);
@@ -10034,6 +10094,36 @@ function updateStats(){
   document.getElementById('sC').textContent=cC;
   document.getElementById('sNC').textContent=cNC;
   document.getElementById('sB').textContent=cB;
+  var done=cC+cNC+cB;
+  var pct=tot>0?Math.round((done/tot)*100):0;
+  var pt=document.getElementById('progTotal');if(pt)pt.textContent=tot;
+  var pd=document.getElementById('progDone');if(pd)pd.textContent=done;
+  var pp=document.getElementById('progPct');if(pp)pp.textContent=pct+'%';
+  var pf=document.getElementById('progFill');
+  if(pf){
+    pf.style.width=pct+'%';
+    function lerpC(a,b,t){return Math.round(a+(b-a)*t);}
+    function pctColor(p){
+      var red=[231,76,60],yel=[243,156,18],grn=[39,174,96];
+      var c;if(p<=50){var t=p/50;c=[lerpC(red[0],yel[0],t),lerpC(red[1],yel[1],t),lerpC(red[2],yel[2],t)];}
+      else{var t=(p-50)/50;c=[lerpC(yel[0],grn[0],t),lerpC(yel[1],grn[1],t),lerpC(yel[2],grn[2],t)];}
+      return'rgb('+c.join(',')+')';}
+    var c1=pctColor(Math.max(0,pct-25));var c2=pctColor(pct);
+    pf.style.background='linear-gradient(90deg,'+c1+','+c2+')';
+  }
+  var pm=document.getElementById('progMsg');
+  if(pm){
+    var msg='';
+    if(tot===0)msg='&#x1F4AA; เริ่มต้นกันเลย! ทีละข้อ ทำได้แน่นอน';
+    else if(pct===0)msg='&#x1F680; พร้อมแล้ว! เริ่มจากข้อแรกได้เลย';
+    else if(pct<25)msg='&#x2728; เริ่มต้นได้ดีมาก ค่อยๆ ไปทีละข้อ';
+    else if(pct<50)msg='&#x1F525; กำลังไปได้สวย เกือบครึ่งทางแล้ว!';
+    else if(pct===50)msg='&#x1F389; ครึ่งทางแล้ว! สู้ๆ อีกครึ่งเดียว';
+    else if(pct<75)msg='&#x26A1; เกินครึ่งแล้ว ใกล้เสร็จเข้าไปทุกที';
+    else if(pct<100)msg='&#x1F3C1; ใกล้ถึงเส้นชัยแล้ว เหลืออีกนิดเดียว!';
+    else msg='&#x1F3C6; ยอดเยี่ยม! ตรวจครบทุกข้อแล้ว พร้อมส่งรายงาน';
+    pm.innerHTML=msg;
+  }
 }
 function addRow(){
   var nq={n:'',q:'',c:[],s:'',sec:'',_result:'',_remark:'',_sel_C:false,_sel_NC:false,_sel_B:false};
@@ -10643,32 +10733,88 @@ function matchGuide(question,guideItems){
 function checkThaiSpelling(text){
   var errors=[];
   var commonMistakes=[
-    ['เเ','แ','เเ (สระเอซ้อน) ควรเป็น แ (สระแอ)'],
-    ['ํา','ำ','ํา (นิคหิต+สระอา) ควรเป็น ำ (สระอำ)'],
-    ['เเล้ว','แล้ว','เเล้ว ควรเป็น แล้ว'],
-    ['สิ่งเเวดล้อม','สิ่งแวดล้อม','สิ่งเเวดล้อม ควรเป็น สิ่งแวดล้อม'],
-    ['กระบวณการ','กระบวนการ','กระบวณการ ควรเป็น กระบวนการ'],
-    ['ดําเนิน','ดำเนิน','ดําเนิน ควรเป็น ดำเนิน'],
-    ['เอกสณ','เอกสาร','เอกสณ ควรเป็น เอกสาร'],
-    ['ตรวสอบ','ตรวจสอบ','ตรวสอบ ควรเป็น ตรวจสอบ'],
-    ['บันทุก','บันทึก','บันทุก ควรเป็น บันทึก'],
-    ['ผลิตภันท์','ผลิตภัณฑ์','ผลิตภันท์ ควรเป็น ผลิตภัณฑ์'],
-    ['อุนหภูมิ','อุณหภูมิ','อุนหภูมิ ควรเป็น อุณหภูมิ'],
-    ['เครืองมือ','เครื่องมือ','เครืองมือ ควรเป็น เครื่องมือ'],
-    ['สุขลักษะ','สุขลักษณะ','สุขลักษะ ควรเป็น สุขลักษณะ'],
-    ['อันตราย','อันตราย',null],
-    ['ปฎิบัติ','ปฏิบัติ','ปฎิบัติ ควรเป็น ปฏิบัติ'],
-    ['เชื้อจุลินทรีย์','เชื้อจุลินทรีย์',null],
-    ['ทําความสะอาด','ทำความสะอาด','ทําความสะอาด ควรเป็น ทำความสะอาด'],
-    ['มาตราฐาน','มาตรฐาน','มาตราฐาน ควรเป็น มาตรฐาน'],
-    ['ประเมิณ','ประเมิน','ประเมิณ ควรเป็น ประเมิน'],
-    ['สัมผัศ','สัมผัส','สัมผัศ ควรเป็น สัมผัส']
+    ['เเ','แ'],['ํา','ำ'],
+    ['เเล้ว','แล้ว'],['สิ่งเเวดล้อม','สิ่งแวดล้อม'],
+    ['กระบวณการ','กระบวนการ'],['ดําเนิน','ดำเนิน'],
+    ['เอกสณ','เอกสาร'],['ตรวสอบ','ตรวจสอบ'],
+    ['บันทุก','บันทึก'],['ผลิตภันท์','ผลิตภัณฑ์'],
+    ['อุนหภูมิ','อุณหภูมิ'],['เครืองมือ','เครื่องมือ'],
+    ['สุขลักษะ','สุขลักษณะ'],['ปฎิบัติ','ปฏิบัติ'],
+    ['ทําความสะอาด','ทำความสะอาด'],['มาตราฐาน','มาตรฐาน'],
+    ['ประเมิณ','ประเมิน'],['สัมผัศ','สัมผัส'],
+    ['ครุภัน','ครุภัณฑ์'],['อุปการณ์','อุปกรณ์'],
+    ['ภาชณะ','ภาชนะ'],['ปนเปื้อล','ปนเปื้อน'],
+    ['สอบเทียบ ','สอบเทียบ'],['คุณภพ','คุณภาพ'],
+    ['ความปลอดภั ','ความปลอดภัย'],['การจักการ','การจัดการ'],
+    ['วิเคาระห์','วิเคราะห์'],['ตวจสอบ','ตรวจสอบ'],
+    ['สะอาท','สะอาด'],['สอาด','สะอาด'],
+    ['อาหารปลอดภัย','อาหารปลอดภัย'],['ทดสอบ ','ทดสอบ'],
+    ['การฝึกอบรบ','การฝึกอบรม']
+  ];
+  var englishMistakes=[
+    ['recieve','receive'],['recieved','received'],
+    ['seperate','separate'],['seperated','separated'],
+    ['occured','occurred'],['occurence','occurrence'],
+    ['acheive','achieve'],['acheived','achieved'],
+    ['accomodate','accommodate'],['accomodation','accommodation'],
+    ['neccessary','necessary'],['necesary','necessary'],
+    ['definately','definitely'],['enviroment','environment'],
+    ['enviromental','environmental'],['mainenance','maintenance'],
+    ['maintainance','maintenance'],['proceedure','procedure'],
+    ['proceedures','procedures'],['responsable','responsible'],
+    ['priviledge','privilege'],['independant','independent'],
+    ['refered','referred'],['transfered','transferred'],
+    ['preceeding','preceding'],['proffesional','professional'],
+    ['committment','commitment'],['developement','development'],
+    ['managment','management'],['equipement','equipment'],
+    ['knowlege','knowledge'],['suppliment','supplement'],
+    ['standart','standard'],['standarts','standards'],
+    ['requirment','requirement'],['requirments','requirements'],
+    ['inplement','implement'],['implimentation','implementation'],
+    ['preform','perform'],['agian','again'],['untill','until'],
+    ['becuase','because'],['begining','beginning'],
+    ['calender','calendar'],['cancelled ','canceled '],
+    ['compnay','company'],['compnay','company'],
+    ['Goverment','Government'],['goverment','government'],
+    ['hygeine','hygiene'],['hygenic','hygienic'],
+    ['labratory','laboratory'],['labatory','laboratory'],
+    ['quallity','quality'],['saftey','safety'],
+    ['inspaction','inspection'],['nonconformaty','nonconformity'],
+    ['conformaty','conformity'],['audtior','auditor'],
+    ['auditee ','auditee'],['certficate','certificate'],
+    ['certifcation','certification'],['verifcation','verification'],
+    ['validaton','validation'],['caliberation','calibration'],
+    ['caliberate','calibrate'],['traceablity','traceability'],
+    ['contamiation','contamination'],['microbilogical','microbiological'],
+    ['microbiologal','microbiological'],['preventive ','preventive']
   ];
   commonMistakes.forEach(function(m){
-    if(m[2]&&text.indexOf(m[0])>=0){
-      errors.push(m[2]);
+    if(m[0]!==m[1]&&text.indexOf(m[0])>=0){
+      errors.push({lang:'th',bad:m[0],good:m[1]});
     }
   });
+  var lowerText=text.toLowerCase();
+  englishMistakes.forEach(function(m){
+    var bad=m[0].toLowerCase().trim();
+    var good=m[1].trim();
+    if(bad!==good&&lowerText.indexOf(bad)>=0){
+      var re=new RegExp('\\b'+bad.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
+      if(re.test(text)){
+        errors.push({lang:'en',bad:bad,good:good});
+      }
+    }
+  });
+  // Detect English words with no vowels (4+ chars = likely gibberish)
+  var noVowelRe=/\b[b-df-hj-np-tv-xz]{4,}\b/gi;
+  var mv;
+  while((mv=noVowelRe.exec(text))!==null){
+    errors.push({lang:'en',type:'meaningless',bad:mv[0],good:'ไม่มีความหมาย (ไม่มีสระ)'});
+  }
+  // Detect Thai consonant runs without vowels (5+ consonants in a row = likely gibberish)
+  var thaiCRe=/[ก-ฮ]{5,}/g;
+  while((mv=thaiCRe.exec(text))!==null){
+    errors.push({lang:'th',type:'meaningless',bad:mv[0],good:'ไม่มีความหมาย (ไม่มีสระ)'});
+  }
   return errors;
 }
 function extractKeywords(text){
@@ -10868,7 +11014,15 @@ function showReviewReport(data){
     html+='<div class="review-section-hdr">📝 ตรวจคำสะกด <span class="badge badge-warn">'+data.spellingIssues.length+' ข้อ</span></div>';
     data.spellingIssues.forEach(function(iss){
       var label=iss.inRemark?' (ในหมายเหตุ)':'';
-      html+='<div class="review-item"><span class="q-num">ข้อ '+iss.n+label+':</span> <span class="suggestion">'+iss.errors.map(escHtml).join(', ')+'</span></div>';
+      var errsHtml=iss.errors.map(function(e){
+        if(typeof e==='string')return escHtml(e);
+        var langTag=e.lang==='en'?'<span class="lang-tag lang-en">EN</span>':'<span class="lang-tag lang-th">TH</span>';
+        if(e.type==='meaningless'){
+          return langTag+'<span class="bad-word">'+escHtml(e.bad)+'</span> <span class="meaningless-tag">❓ ไม่มีความหมาย</span>';
+        }
+        return langTag+'<span class="bad-word">'+escHtml(e.bad)+'</span> &rarr; <span class="good-word">'+escHtml(e.good)+'</span>';
+      }).join('<br>');
+      html+='<div class="review-item"><span class="q-num">ข้อ '+iss.n+label+':</span> <div class="spell-errors">'+errsHtml+'</div></div>';
     });
     html+='</div>';
   }
@@ -11064,6 +11218,100 @@ function closePrintPreview(){
           <li>&#xe01;&#xe14;&#xe17;&#xe35;&#xe48; <b>&#xe04;&#xe33;&#xe16;&#xe32;&#xe21;</b> &#xe2b;&#xe23;&#xe37;&#xe2d; <b>&#xe02;&#xe49;&#xe2d;&#xe01;&#xe33;&#xe2b;&#xe19;&#xe14;</b> &#xe40;&#xe1e;&#xe37;&#xe48;&#xe2d;&#xe14;&#xe39;&#xe23;&#xe32;&#xe22;&#xe25;&#xe30;&#xe40;&#xe2d;&#xe35;&#xe22;&#xe14;&#xe41;&#xe25;&#xe30;&#xe40;&#xe01;&#xe13;&#xe11;&#xe4c;&#xe01;&#xe32;&#xe23;&#xe15;&#xe23;&#xe27;&#xe08;</li>
           <li>&#xe23;&#xe32;&#xe22;&#xe07;&#xe32;&#xe19;&#xe15;&#xe49;&#xe2d;&#xe07; <b>&#xe1c;&#xe48;&#xe32;&#xe19;&#xe40;&#xe01;&#xe13;&#xe11;&#xe4c;</b> &#xe08;&#xe36;&#xe07;&#xe08;&#xe30;&#xe2a;&#xe31;&#xe48;&#xe07;&#xe1e;&#xe34;&#xe21;&#xe1e;&#xe4c;&#xe44;&#xe14;&#xe49;</li>
         </ul>
+      </div>
+
+      <div class="manual-divider"></div>
+
+      <div class="audit-rules-section">
+        <div class="audit-rules-header">
+          <span class="rules-icon">&#x1F3AF;</span>
+          <h3>&#xe04;&#xe33;&#xe41;&#xe19;&#xe30;&#xe19;&#xe33;&#xe43;&#xe19;&#xe01;&#xe32;&#xe23;&#xe15;&#xe23;&#xe27;&#xe08;&#xe41;&#xe25;&#xe30;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19;&#xe23;&#xe32;&#xe22;&#xe07;&#xe32;&#xe19;&#xe41;&#xe1a;&#xe1a;&#xe15;&#xe36;&#xe07; (Strict Audit Standards)</h3>
+        </div>
+        <p class="audit-rules-intro">&#xe2d;&#xe49;&#xe32;&#xe07;&#xe2d;&#xe34;&#xe07; ISO 19011:2018 / ISO 9001:2015 / FSSC 22000 V6 &#x2014; &#xe23;&#xe32;&#xe22;&#xe07;&#xe32;&#xe19;&#xe15;&#xe49;&#xe2d;&#xe07; &#xe1c;&#xe48;&#xe32;&#xe19;&#xe40;&#xe01;&#xe13;&#xe11;&#xe4c; Lead Auditor &#xe08;&#xe36;&#xe07;&#xe16;&#xe37;&#xe2d;&#xe27;&#xe48;&#xe32;&#xe44;&#xe14;&#xe49;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19;</p>
+
+        <div class="rule-card rule-red">
+          <div class="rule-card-hdr"><span class="rule-num">1</span><h4>&#x274C; Objective Evidence &#x2014; &#xe2b;&#xe25;&#xe31;&#xe01;&#xe10;&#xe32;&#xe19;&#xe15;&#xe49;&#xe2d;&#xe07;&#xe08;&#xe31;&#xe1a;&#xe15;&#xe49;&#xe2d;&#xe07;&#xe44;&#xe14;&#xe49;</h4></div>
+          <div class="rule-body">
+            <div class="rule-dont"><b>&#x274C; &#xe2b;&#xe49;&#xe32;&#xe21;:</b> &#xe40;&#xe02;&#xe35;&#xe22;&#xe19;&#xe25;&#xe2d;&#xe22; &#xe46; &#xe40;&#xe0a;&#xe48;&#xe19; "&#xe21;&#xe35;&#xe40;&#xe2d;&#xe01;&#xe2a;&#xe32;&#xe23;", "&#xe14;&#xe35;&#xe41;&#xe25;&#xe49;&#xe27;", "&#xe40;&#xe2b;&#xe21;&#xe32;&#xe30;&#xe2a;&#xe21;"</div>
+            <div class="rule-do"><b>&#x2705; &#xe15;&#xe49;&#xe2d;&#xe07;&#xe21;&#xe35;:</b> &#xe40;&#xe25;&#xe02;&#xe17;&#xe35;&#xe48;&#xe40;&#xe2d;&#xe01;&#xe2a;&#xe32;&#xe23;, &#xe0a;&#xe37;&#xe48;&#xe2d;&#xe04;&#xe19;, Batch No., &#xe27;&#xe31;&#xe19;&#xe17;&#xe35;&#xe48; / &#xe40;&#xe27;&#xe25;&#xe32;, Log file, &#xe40;&#xe25;&#xe02;&#xe40;&#xe04;&#xe23;&#xe37;&#xe48;&#xe2d;&#xe07;&#xe21;&#xe37;&#xe2d;</div>
+            <div class="rule-example"><b>&#x270D;&#xFE0F; &#xe15;&#xe31;&#xe27;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;:</b> &#xe1e;&#xe1a;&#xe40;&#xe2d;&#xe01;&#xe2a;&#xe32;&#xe23; QA-001 Rev.3 &#xe25;&#xe07;&#xe27;&#xe31;&#xe19;&#xe17;&#xe35;&#xe48; 15/03/2568 &#xe42;&#xe14;&#xe22;&#xe19;.&#xe2a;&#xe21;&#xe0a;&#xe32;&#xe22; &#xe1c;&#xe39;&#xe49;&#xe08;&#xe31;&#xe14;&#xe01;&#xe32;&#xe23;&#xe40;&#xe2d;&#xe01;&#xe2a;&#xe32;&#xe23;</div>
+          </div>
+        </div>
+
+        <div class="rule-card rule-orange">
+          <div class="rule-card-hdr"><span class="rule-num">2</span><h4>&#x1F4CD; Specific & Measurable &#x2014; &#xe23;&#xe30;&#xe1a;&#xe38;&#xe40;&#xe09;&#xe1e;&#xe32;&#xe30;&#xe40;&#xe08;&#xe32;&#xe30;&#xe08;&#xe07; &#xe27;&#xe31;&#xe14;&#xe44;&#xe14;&#xe49;</h4></div>
+          <div class="rule-body">
+            <div class="rule-dont"><b>&#x274C; &#xe2b;&#xe49;&#xe32;&#xe21;:</b> "&#xe2d;&#xe38;&#xe13;&#xe2b;&#xe20;&#xe39;&#xe21;&#xe34;&#xe2a;&#xe39;&#xe07;&#xe40;&#xe01;&#xe34;&#xe19;", "&#xe1e;&#xe19;&#xe31;&#xe01;&#xe07;&#xe32;&#xe19;&#xe44;&#xe21;&#xe48;&#xe40;&#xe22;&#xe2d;&#xe30;"</div>
+            <div class="rule-do"><b>&#x2705; &#xe15;&#xe49;&#xe2d;&#xe07;&#xe21;&#xe35;:</b> &#xe23;&#xe30;&#xe1a;&#xe38;&#xe15;&#xe31;&#xe27;&#xe40;&#xe25;&#xe02; &#xe2b;&#xe19;&#xe48;&#xe27;&#xe22;&#xe27;&#xe31;&#xe14; &#xe40;&#xe01;&#xe13;&#xe11;&#xe4c;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19; &#xe04;&#xe48;&#xe32;&#xe17;&#xe35;&#xe48;&#xe27;&#xe31;&#xe14;&#xe44;&#xe14;&#xe49;&#xe08;&#xe23;&#xe34;&#xe07;</div>
+            <div class="rule-example"><b>&#x270D;&#xFE0F; &#xe15;&#xe31;&#xe27;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;:</b> &#xe2d;&#xe38;&#xe13;&#xe2b;&#xe20;&#xe39;&#xe21;&#xe34;&#xe2b;&#xe49;&#xe2d;&#xe07; Cooling &#xe27;&#xe31;&#xe14;&#xe44;&#xe14;&#xe49; 8.5&#xB0;C (&#xe40;&#xe01;&#xe13;&#xe11;&#xe4c;&#xe01;&#xe33;&#xe2b;&#xe19;&#xe14; &#x2264; 5&#xB0;C) &#xe40;&#xe27;&#xe25;&#xe32; 14:30 &#xe19;.</div>
+          </div>
+        </div>
+
+        <div class="rule-card rule-purple">
+          <div class="rule-card-hdr"><span class="rule-num">3</span><h4>&#x1F4D6; Clause Reference &#x2014; &#xe2d;&#xe49;&#xe32;&#xe07;&#xe02;&#xe49;&#xe2d;&#xe01;&#xe33;&#xe2b;&#xe19;&#xe14;&#xe43;&#xe2b;&#xe49;&#xe16;&#xe39;&#xe01;&#xe15;&#xe49;&#xe2d;&#xe07;</h4></div>
+          <div class="rule-body">
+            <div class="rule-dont"><b>&#x274C; &#xe2b;&#xe49;&#xe32;&#xe21;:</b> &#xe23;&#xe30;&#xe1a;&#xe38; "&#xe1c;&#xe34;&#xe14;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19;" &#xe25;&#xe2d;&#xe22;&#xe46;&#xe42;&#xe14;&#xe22;&#xe44;&#xe21;&#xe48;&#xe1a;&#xe2d;&#xe01;&#xe27;&#xe48;&#xe32;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19;&#xe44;&#xe2b;&#xe19; &#xe02;&#xe49;&#xe2d;&#xe43;&#xe14;</div>
+            <div class="rule-do"><b>&#x2705; &#xe15;&#xe49;&#xe2d;&#xe07;&#xe21;&#xe35;:</b> &#xe23;&#xe30;&#xe1a;&#xe38; Clause &#xe43;&#xe2b;&#xe49;&#xe0a;&#xe31;&#xe14; (ISO 9001 Clause 7.2 / FSSC 22000 Clause 7.1.6 &#xe2f;&#xe25;&#xe2f;)</div>
+            <div class="rule-example"><b>&#x270D;&#xFE0F; &#xe15;&#xe31;&#xe27;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;:</b> &#xe1e;&#xe1a; NC &#xe02;&#xe31;&#xe14;&#xe41;&#xe22;&#xe49;&#xe07; ISO 9001:2015 Clause 7.2 (Competence) &#x2014; &#xe1c;&#xe39;&#xe49;&#xe1b;&#xe0f;&#xe34;&#xe1a;&#xe31;&#xe15;&#xe34;&#xe07;&#xe32;&#xe19;&#xe22;&#xe31;&#xe07;&#xe44;&#xe21;&#xe48;&#xe44;&#xe14;&#xe49;&#xe23;&#xe31;&#xe1a;&#xe01;&#xe32;&#xe23;&#xe1d;&#xe36;&#xe01;&#xe2d;&#xe1a;&#xe23;&#xe21;</div>
+          </div>
+        </div>
+
+        <div class="rule-card rule-blue">
+          <div class="rule-card-hdr"><span class="rule-num">4</span><h4>&#x1F50D; Root Cause &#x2014; &#xe27;&#xe34;&#xe40;&#xe04;&#xe23;&#xe32;&#xe30;&#xe2b;&#xe4c;&#xe2a;&#xe32;&#xe40;&#xe2b;&#xe15;&#xe38;&#xe23;&#xe32;&#xe01;</h4></div>
+          <div class="rule-body">
+            <div class="rule-dont"><b>&#x274C; &#xe2b;&#xe49;&#xe32;&#xe21;:</b> &#xe41;&#xe01;&#xe49;&#xe1b;&#xe25;&#xe32;&#xe22;&#xe40;&#xe2b;&#xe15;&#xe38; &#xe40;&#xe0a;&#xe48;&#xe19; "&#xe1c;&#xe39;&#xe49;&#xe1b;&#xe0f;&#xe34;&#xe1a;&#xe31;&#xe15;&#xe34;&#xe07;&#xe32;&#xe19;&#xe40;&#xe1c;&#xe25;&#xe2d;" &#x2192; &#xe41;&#xe01;&#xe49;&#xe14;&#xe49;&#xe27;&#xe22;&#xe01;&#xe32;&#xe23;&#xe40;&#xe15;&#xe37;&#xe2d;&#xe19; &#xe40;&#xe09;&#xe22;&#xe46;</div>
+            <div class="rule-do"><b>&#x2705; &#xe15;&#xe49;&#xe2d;&#xe07;&#xe21;&#xe35;:</b> &#xe43;&#xe0a;&#xe49; <b>5-Why Analysis</b> &#xe2b;&#xe23;&#xe37;&#xe2d; <b>Fishbone</b> &#xe2b;&#xe32;&#xe2a;&#xe32;&#xe40;&#xe2b;&#xe15;&#xe38;&#xe17;&#xe35;&#xe48;&#xe41;&#xe17;&#xe49;&#xe08;&#xe23;&#xe34;&#xe07;&#xe23;&#xe30;&#xe14;&#xe31;&#xe1a;&#xe23;&#xe30;&#xe1a;&#xe1a;</div>
+            <div class="rule-example"><b>&#x270D;&#xFE0F; &#xe15;&#xe31;&#xe27;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;:</b> Root Cause &#x2014; &#xe23;&#xe30;&#xe1a;&#xe1a;&#xe17;&#xe1a;&#xe17;&#xe27;&#xe19;&#xe04;&#xe27;&#xe32;&#xe21;&#xe2a;&#xe32;&#xe21;&#xe32;&#xe23;&#xe16;&#xe17;&#xe35;&#xe48;&#xe44;&#xe21;&#xe48;&#xe04;&#xe23;&#xe2d;&#xe1a;&#xe04;&#xe25;&#xe38;&#xe21;&#xe07;&#xe32;&#xe19;&#xe43;&#xe2b;&#xe21;&#xe48; &#xe17;&#xe33;&#xe43;&#xe2b;&#xe49;&#xe1e;&#xe19;&#xe31;&#xe01;&#xe07;&#xe32;&#xe19;&#xe43;&#xe2b;&#xe21;&#xe48;&#xe40;&#xe23;&#xe34;&#xe48;&#xe21;&#xe17;&#xe33;&#xe07;&#xe32;&#xe19;&#xe42;&#xe14;&#xe22;&#xe44;&#xe21;&#xe48;&#xe1c;&#xe48;&#xe32;&#xe19;&#xe01;&#xe32;&#xe23;&#xe1d;&#xe36;&#xe01;&#xe2d;&#xe1a;&#xe23;&#xe21;</div>
+          </div>
+        </div>
+
+        <div class="rule-card rule-green">
+          <div class="rule-card-hdr"><span class="rule-num">5</span><h4>&#x2696;&#xFE0F; Fair & Factual &#x2014; &#xe40;&#xe1b;&#xe47;&#xe19;&#xe01;&#xe25;&#xe32;&#xe07; &#xe44;&#xe21;&#xe48;&#xe43;&#xe0a;&#xe49;&#xe2d;&#xe32;&#xe23;&#xe21;&#xe13;&#xe4c;</h4></div>
+          <div class="rule-body">
+            <div class="rule-dont"><b>&#x274C; &#xe2b;&#xe49;&#xe32;&#xe21;:</b> &#xe43;&#xe0a;&#xe49;&#xe16;&#xe49;&#xe2d;&#xe22;&#xe04;&#xe33;&#xe40;&#xe0a;&#xe34;&#xe07;&#xe25;&#xe1a; &#xe40;&#xe0a;&#xe48;&#xe19; "&#xe41;&#xe22;&#xe48;&#xe21;&#xe32;&#xe01;", "&#xe2b;&#xe48;&#xe27;&#xe22;&#xe41;&#xe15;&#xe01;", "&#xe44;&#xe23;&#xe49;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19;"</div>
+            <div class="rule-do"><b>&#x2705; &#xe15;&#xe49;&#xe2d;&#xe07;&#xe21;&#xe35;:</b> &#xe43;&#xe0a;&#xe49;&#xe20;&#xe32;&#xe29;&#xe32;&#xe40;&#xe1b;&#xe47;&#xe19;&#xe01;&#xe25;&#xe32;&#xe07; &#xe23;&#xe30;&#xe1a;&#xe38;&#xe2a;&#xe34;&#xe48;&#xe07;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a; &#xe44;&#xe21;&#xe48;&#xe43;&#xe2a;&#xe48;&#xe04;&#xe27;&#xe32;&#xe21;&#xe23;&#xe39;&#xe49;&#xe2a;&#xe36;&#xe01;&#xe2a;&#xe48;&#xe27;&#xe19;&#xe15;&#xe31;&#xe27;</div>
+            <div class="rule-example"><b>&#x270D;&#xFE0F; &#xe15;&#xe31;&#xe27;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;:</b> &#xe1e;&#xe1a; 3 &#xe43;&#xe19; 10 &#xe23;&#xe32;&#xe22;&#xe01;&#xe32;&#xe23;&#xe44;&#xe21;&#xe48;&#xe1c;&#xe48;&#xe32;&#xe19;&#xe01;&#xe32;&#xe23;&#xe17;&#xe27;&#xe19;&#xe2a;&#xe2d;&#xe1a; (&#xe44;&#xe21;&#xe48;&#xe43;&#xe0a;&#xe48; "&#xe23;&#xe30;&#xe1a;&#xe1a;&#xe41;&#xe22;&#xe48;")</div>
+          </div>
+        </div>
+
+        <div class="rule-card rule-teal">
+          <div class="rule-card-hdr"><span class="rule-num">6</span><h4>&#x1F4DD; NC Statement Structure &#x2014; &#xe42;&#xe04;&#xe23;&#xe07;&#xe2a;&#xe23;&#xe49;&#xe32;&#xe07; NC</h4></div>
+          <div class="rule-body">
+            <div class="rule-do"><b>&#x2705; &#xe2a;&#xe39;&#xe15;&#xe23;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19;:</b> <b>Requirement + Evidence + Gap</b></div>
+            <div class="rule-example">
+              <b>1. Requirement:</b> &#xe2d;&#xe49;&#xe32;&#xe07;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19;/&#xe01;&#xe0e;&#xe40;&#xe01;&#xe13;&#xe11;&#xe4c;<br>
+              <b>2. Evidence:</b> &#xe2a;&#xe34;&#xe48;&#xe07;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a;&#xe40;&#xe2b;&#xe47;&#xe19; (&#xe2b;&#xe25;&#xe31;&#xe01;&#xe10;&#xe32;&#xe19;)<br>
+              <b>3. Gap:</b> &#xe0a;&#xe48;&#xe2d;&#xe07;&#xe27;&#xe48;&#xe32;&#xe07;&#xe23;&#xe30;&#xe2b;&#xe27;&#xe48;&#xe32;&#xe07;&#xe21;&#xe32;&#xe15;&#xe23;&#xe10;&#xe32;&#xe19;&#xe01;&#xe31;&#xe1a;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a;&#xe08;&#xe23;&#xe34;&#xe07;
+            </div>
+            <div class="rule-example example-full"><b>&#x270D;&#xFE0F; &#xe15;&#xe31;&#xe27;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07; NC:</b> &#xe15;&#xe32;&#xe21; ISO 9001:2015 Clause 7.1.5.2 &#xe40;&#xe04;&#xe23;&#xe37;&#xe48;&#xe2d;&#xe07;&#xe21;&#xe37;&#xe2d;&#xe27;&#xe31;&#xe14;&#xe15;&#xe49;&#xe2d;&#xe07;&#xe2a;&#xe2d;&#xe1a;&#xe40;&#xe17;&#xe35;&#xe22;&#xe1a;&#xe15;&#xe32;&#xe21;&#xe23;&#xe2d;&#xe1a; (Requirement) &#x2014; &#xe1e;&#xe1a;&#xe40;&#xe04;&#xe23;&#xe37;&#xe48;&#xe2d;&#xe07;&#xe0a;&#xe31;&#xe48;&#xe07;&#xe19;&#xe49;&#xe33;&#xe2b;&#xe19;&#xe31;&#xe01;&#xe17;&#xe35;&#xe48; SC-105 &#xe04;&#xe23;&#xe1a;&#xe01;&#xe33;&#xe2b;&#xe19;&#xe14;&#xe2a;&#xe2d;&#xe1a;&#xe40;&#xe17;&#xe35;&#xe22;&#xe1a;&#xe17;&#xe38;&#xe01; 6 &#xe40;&#xe14;&#xe37;&#xe2d;&#xe19; &#xe04;&#xe23;&#xe31;&#xe49;&#xe07;&#xe2a;&#xe38;&#xe14;&#xe17;&#xe33; 01/02/2568 &#xe04;&#xe23;&#xe1a;&#xe01;&#xe33;&#xe2b;&#xe19;&#xe14; 6 &#xe40;&#xe14;&#xe37;&#xe2d;&#xe19;&#xe40;&#xe21;&#xe37;&#xe48;&#xe2d; 01/08/2568 &#xe41;&#xe15;&#xe48;&#xe22;&#xe31;&#xe07;&#xe44;&#xe21;&#xe48;&#xe44;&#xe14;&#xe49;&#xe2a;&#xe2d;&#xe1a;&#xe40;&#xe17;&#xe35;&#xe22;&#xe1a; (Evidence) &#x2014; &#xe2a;&#xe48;&#xe07;&#xe1c;&#xe25;&#xe43;&#xe2b;&#xe49;&#xe04;&#xe27;&#xe32;&#xe21;&#xe16;&#xe39;&#xe01;&#xe15;&#xe49;&#xe2d;&#xe07;&#xe02;&#xe2d;&#xe07;&#xe04;&#xe48;&#xe32;&#xe17;&#xe35;&#xe48;&#xe27;&#xe31;&#xe14;&#xe44;&#xe14;&#xe49;&#xe44;&#xe21;&#xe48;&#xe21;&#xe31;&#xe48;&#xe19;&#xe43;&#xe08; (Gap)</div>
+          </div>
+        </div>
+
+        <div class="rule-card rule-pink">
+          <div class="rule-card-hdr"><span class="rule-num">7</span><h4>&#x26A0;&#xFE0F; &#xe02;&#xe49;&#xe2d;&#xe2b;&#xe49;&#xe32;&#xe21;&#xe40;&#xe14;&#xe47;&#xe14;&#xe02;&#xe32;&#xe14;&#xe43;&#xe19;&#xe01;&#xe32;&#xe23;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19;&#xe23;&#xe32;&#xe22;&#xe07;&#xe32;&#xe19;</h4></div>
+          <div class="rule-body">
+            <ul class="rule-list">
+              <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>"&#xe1c;&#xe39;&#xe49;&#xe23;&#xe31;&#xe1a;&#xe1c;&#xe34;&#xe14;&#xe0a;&#xe2d;&#xe1a;"</b> &#xe43;&#xe2b;&#xe49;&#xe23;&#xe30;&#xe1a;&#xe38; <b>"&#xe23;&#xe30;&#xe1a;&#xe1a;/&#xe01;&#xe23;&#xe30;&#xe1a;&#xe27;&#xe19;&#xe01;&#xe32;&#xe23;"</b> &#xe17;&#xe35;&#xe48;&#xe1a;&#xe01;&#xe1e;&#xe23;&#xe48;&#xe2d;&#xe07;&#xe41;&#xe17;&#xe19;</li>
+              <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>"&#xe04;&#xe27;&#xe23; / &#xe2d;&#xe32;&#xe08;&#xe08;&#xe30;"</b> &#xe40;&#xe1e;&#xe23;&#xe32;&#xe30;&#xe44;&#xe21;&#xe48;&#xe43;&#xe0a;&#xe48;&#xe02;&#xe49;&#xe2d;&#xe40;&#xe17;&#xe47;&#xe08;&#xe08;&#xe23;&#xe34;&#xe07; &#x2014; &#xe43;&#xe2b;&#xe49;&#xe1a;&#xe2d;&#xe01;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a;&#xe40;&#xe1b;&#xe47;&#xe19;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;&#xe44;&#xe23;</li>
+              <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>"&#xe44;&#xe21;&#xe48;&#xe21;&#xe35; &#xe40;&#xe2d;&#xe01;&#xe2a;&#xe32;&#xe23;"</b> &#x2014; &#xe43;&#xe2b;&#xe49;&#xe23;&#xe30;&#xe1a;&#xe38;&#xe27;&#xe48;&#xe32;&#xe44;&#xe1b;&#xe02;&#xe2d;&#xe14;&#xe39;&#xe17;&#xe35;&#xe48;&#xe44;&#xe2b;&#xe19; &#xe43;&#xe04;&#xe23;&#xe1a;&#xe2d;&#xe01;&#xe27;&#xe48;&#xe32;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;&#xe44;&#xe23;</li>
+              <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe2a;&#xe19;&#xe2d;&#xe27;&#xe34;&#xe18;&#xe35;&#xe41;&#xe01;&#xe49;&#xe44;&#xe02; (Auditor &#xe21;&#xe35;&#xe2b;&#xe19;&#xe49;&#xe32;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a;&#xe1b;&#xe31;&#xe0d;&#xe2b;&#xe32; &#xe44;&#xe21;&#xe48;&#xe43;&#xe0a;&#xe48;&#xe41;&#xe01;&#xe49;&#xe44;&#xe02;)</li>
+              <li>&#x2705; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe25;&#xe37;&#xe21;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>&#xe02;&#xe49;&#xe2d;&#xe14;&#xe35;&#xe14;&#xe49;&#xe27;&#xe22;</b> &#x2014; &#xe1a;&#xe31;&#xe19;&#xe17;&#xe36;&#xe01;&#xe2a;&#xe34;&#xe48;&#xe07;&#xe17;&#xe35;&#xe48;&#xe17;&#xe33;&#xe44;&#xe14;&#xe49;&#xe14;&#xe35;&#xe14;&#xe49;&#xe27;&#xe22; (Good Practice)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="audit-summary-box">
+          <h4>&#x1F4CC; &#xe2a;&#xe23;&#xe38;&#xe1b;&#xe2a;&#xe39;&#xe15;&#xe23;&#xe01;&#xe32;&#xe23;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19;&#xe23;&#xe32;&#xe22;&#xe07;&#xe32;&#xe19;&#xe17;&#xe35;&#xe48;&#xe14;&#xe35;</h4>
+          <p class="formula-line"><b>5W1H + Evidence + Clause + Impact</b></p>
+          <ul>
+            <li><b>What:</b> &#xe1e;&#xe1a;&#xe2d;&#xe30;&#xe44;&#xe23;</li>
+            <li><b>Where:</b> &#xe1e;&#xe1a;&#xe17;&#xe35;&#xe48;&#xe44;&#xe2b;&#xe19; (&#xe2a;&#xe16;&#xe32;&#xe19;&#xe17;&#xe35;&#xe48; / &#xe40;&#xe04;&#xe23;&#xe37;&#xe48;&#xe2d;&#xe07;&#xe08;&#xe31;&#xe01;&#xe23;)</li>
+            <li><b>When:</b> &#xe1e;&#xe1a;&#xe40;&#xe21;&#xe37;&#xe48;&#xe2d;&#xe44;&#xe23;</li>
+            <li><b>Who:</b> &#xe43;&#xe04;&#xe23;&#xe40;&#xe01;&#xe35;&#xe48;&#xe22;&#xe27;&#xe02;&#xe49;&#xe2d;&#xe07;</li>
+            <li><b>Why:</b> &#xe17;&#xe33;&#xe44;&#xe21;&#xe16;&#xe36;&#xe07;&#xe40;&#xe1b;&#xe47;&#xe19; NC (&#xe2d;&#xe49;&#xe32;&#xe07; Clause)</li>
+            <li><b>How:</b> &#xe1e;&#xe1a;&#xe44;&#xe14;&#xe49;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;&#xe44;&#xe23; (&#xe27;&#xe34;&#xe18;&#xe35;&#xe01;&#xe32;&#xe23;&#xe15;&#xe23;&#xe27;&#xe08;)</li>
+          </ul>
+        </div>
       </div>
 
     </div>
