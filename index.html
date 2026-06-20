@@ -322,8 +322,13 @@ td .cl-hover{cursor:help;border-bottom:1px dashed #f6ad55}
 .review-item .good{color:#28a745}
 .review-summary{background:linear-gradient(135deg,#e8f4f8,#f0f9ff);padding:20px;border-radius:10px;margin-bottom:20px}
 .review-summary h2{color:#1B6B93;margin:0 0 10px;font-size:1.2em}
-.review-summary .score-bar{height:10px;border-radius:5px;background:#e0e0e0;margin:8px 0}
-.review-summary .score-fill{height:100%;border-radius:5px;transition:width .5s}
+.review-summary .score-bar-wrap{margin:8px 0 14px}
+.review-summary .score-bar-label{display:flex;justify-content:space-between;align-items:center;font-size:.85em;color:#475569;margin-bottom:5px;font-weight:600}
+.review-summary .score-pct-tag{font-size:1em;font-weight:800;color:var(--primary)}
+.review-summary .score-bar{height:14px;border-radius:10px;background:#edf2f7;overflow:hidden;position:relative;box-shadow:inset 0 1px 3px rgba(0,0,0,.08)}
+.review-summary .score-fill{height:100%;border-radius:10px;transition:width .6s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;min-width:0}
+.review-summary .score-fill::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:shimmer 2s infinite}
+.review-summary .score-msg{font-size:.77em;color:#64748b;text-align:center;font-style:italic;margin-top:3px}
 .review-summary .stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
 .review-summary .stat{font-size:.9em}
 .review-summary .stat b{display:block;font-size:1.3em}
@@ -10085,6 +10090,14 @@ function pickCNC(cell,q,type){
   if(!was){q['_sel_'+type]=true;cell.className='cnc-cell selected-'+type.toLowerCase();}
   updateStats();autoSave();
 }
+function getProgressGradient(pct){
+  function lerpC(a,b,t){return Math.round(a+(b-a)*t);}
+  function pctColor(p){
+    var red=[231,76,60],yel=[243,156,18],grn=[39,174,96];
+    var c;if(p<=50){var t=p/50;c=[lerpC(red[0],yel[0],t),lerpC(red[1],yel[1],t),lerpC(red[2],yel[2],t)];}
+    else{var t=(p-50)/50;c=[lerpC(yel[0],grn[0],t),lerpC(yel[1],grn[1],t),lerpC(yel[2],grn[2],t)];}
+    return'rgb('+c.join(',')+')';}
+  return'linear-gradient(90deg,'+pctColor(Math.max(0,pct-25))+','+pctColor(pct)+')';}
 function updateStats(){
   if(currentDeptIdx<0)return;
   var tot=0,cC=0,cNC=0,cB=0;
@@ -10100,17 +10113,7 @@ function updateStats(){
   var pd=document.getElementById('progDone');if(pd)pd.textContent=done;
   var pp=document.getElementById('progPct');if(pp)pp.textContent=pct+'%';
   var pf=document.getElementById('progFill');
-  if(pf){
-    pf.style.width=pct+'%';
-    function lerpC(a,b,t){return Math.round(a+(b-a)*t);}
-    function pctColor(p){
-      var red=[231,76,60],yel=[243,156,18],grn=[39,174,96];
-      var c;if(p<=50){var t=p/50;c=[lerpC(red[0],yel[0],t),lerpC(red[1],yel[1],t),lerpC(red[2],yel[2],t)];}
-      else{var t=(p-50)/50;c=[lerpC(yel[0],grn[0],t),lerpC(yel[1],grn[1],t),lerpC(yel[2],grn[2],t)];}
-      return'rgb('+c.join(',')+')';}
-    var c1=pctColor(Math.max(0,pct-25));var c2=pctColor(pct);
-    pf.style.background='linear-gradient(90deg,'+c1+','+c2+')';
-  }
+  if(pf){pf.style.width=pct+'%';pf.style.background=getProgressGradient(pct);}
   var pm=document.getElementById('progMsg');
   if(pm){
     var msg='';
@@ -10636,7 +10639,9 @@ function doAuditReview(){
           qualityIssues.push({n:q.n,type:'NC',msg:'เลือก NC (ไม่สอดคล้อง) แต่เนื้อหาดูเป็นบวก ("'+posFound.join(', ')+'") — ตรวจสอบว่าควรเป็น C หรือไม่?'});
         }
       }
-      if(!remark.trim()){
+      var simpleNcPhrases=['ไม่พบ','ขาด','ไม่มี'];
+      var isSimpleNc=simpleNcPhrases.some(function(w){return trimmed.indexOf(w)>=0;});
+      if(!remark.trim()&&!isSimpleNc){
         qualityIssues.push({n:q.n,type:'NC',msg:'NC ต้องมีหมายเหตุ/Remark — ระบุ Corrective Action ที่ต้องดำเนินการ พร้อมกำหนดเวลาแก้ไข'});
       }
     }
@@ -10955,10 +10960,16 @@ function showReviewReport(data){
   html+='<div style="display:flex;gap:20px;margin:12px 0;flex-wrap:wrap">';
   html+='<div style="flex:1;min-width:200px"><b>Audit Score:</b> <span style="font-size:1.5em;font-weight:700;color:'+(data.auditScore>=90?'#28a745':data.auditScore>=60?'#ffc107':'#dc3545')+'">'+data.auditScore+'</span>/100</div>';
   html+='</div>';
-  html+='<div><b>ความครบถ้วน:</b> '+data.completedCount+'/'+data.totalQuestions+' ข้อ ('+data.completionPct+'%) '+(data.completionPct===100?'✅':'❌ ต้อง 100%')+'</div>';
-  html+='<div class="score-bar"><div class="score-fill" style="width:'+data.completionPct+'%;background:'+(data.completionPct>=100?'#28a745':'#dc3545')+'"></div></div>';
-  html+='<div><b>คุณภาพการเขียน:</b> '+data.qualityScore+'% '+(data.qualityScore>=90?'✅':'❌ ต้อง ≥ 90%')+'</div>';
-  html+='<div class="score-bar"><div class="score-fill" style="width:'+data.qualityScore+'%;background:'+(data.qualityScore>=90?'#28a745':data.qualityScore>=60?'#ffc107':'#dc3545')+'"></div></div>';
+  var cpMsg=data.completionPct===100?'🏆 ครบถ้วน 100% พร้อมส่งรายงาน!':data.completionPct>=75?'🏁 ใกล้เสร็จแล้ว เหลืออีกนิดเดียว':data.completionPct>=50?'⚡ เกินครึ่งทางแล้ว สู้ต่อ!':data.completionPct>0?'🔥 เริ่มต้นแล้ว ค่อยๆ ไปทีละข้อ':'🚀 ยังไม่ได้กรอก — เริ่มเลยครับ';
+  html+='<div class="score-bar-wrap">';
+  html+='<div class="score-bar-label"><span>📋 ความครบถ้วน — '+data.completedCount+'/'+data.totalQuestions+' ข้อ '+(data.completionPct===100?'✅':'❌ ต้อง 100%')+'</span><span class="score-pct-tag">'+data.completionPct+'%</span></div>';
+  html+='<div class="score-bar"><div class="score-fill" style="width:'+data.completionPct+'%;background:'+getProgressGradient(data.completionPct)+'"></div></div>';
+  html+='<div class="score-msg">'+cpMsg+'</div></div>';
+  var qMsg=data.completedCount===0?'🔍 ยังไม่มีข้อมูลสำหรับประเมิน':data.qualityScore>=90?'🏆 คุณภาพดีเยี่ยม! รายงานผ่านเกณฑ์':data.qualityScore>=75?'✨ คุณภาพดี เกือบถึงเกณฑ์แล้ว':data.qualityScore>=60?'⚠️ ต้องปรับปรุงคุณภาพเพิ่มเติม':data.qualityScore>0?'❗ คุณภาพยังต่ำ ตรวจสอบรายการที่ต้องแก้ไข':'❗ มีข้อที่ต้องแก้ไขจำนวนมาก กรุณาปรับปรุงคุณภาพ';
+  html+='<div class="score-bar-wrap">';
+  html+='<div class="score-bar-label"><span>✏️ คุณภาพการเขียน '+(data.qualityScore>=90?'✅':'❌ ต้อง ≥ 90%')+'</span><span class="score-pct-tag">'+data.qualityScore+'%</span></div>';
+  html+='<div class="score-bar"><div class="score-fill" style="width:'+data.qualityScore+'%;background:'+getProgressGradient(data.qualityScore)+'"></div></div>';
+  html+='<div class="score-msg">'+qMsg+'</div></div>';
   html+='<div class="stats">';
   html+='<div class="stat"><b style="color:#dc3545">'+data.issues.length+'</b>ข้อมูลแบบฟอร์ม</div>';
   html+='<div class="stat"><b style="color:#dc3545">'+data.findingIssues.length+'</b>ข้อที่ไม่ครบ</div>';
@@ -11294,28 +11305,4 @@ function closePrintPreview(){
               <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>"&#xe1c;&#xe39;&#xe49;&#xe23;&#xe31;&#xe1a;&#xe1c;&#xe34;&#xe14;&#xe0a;&#xe2d;&#xe1a;"</b> &#xe43;&#xe2b;&#xe49;&#xe23;&#xe30;&#xe1a;&#xe38; <b>"&#xe23;&#xe30;&#xe1a;&#xe1a;/&#xe01;&#xe23;&#xe30;&#xe1a;&#xe27;&#xe19;&#xe01;&#xe32;&#xe23;"</b> &#xe17;&#xe35;&#xe48;&#xe1a;&#xe01;&#xe1e;&#xe23;&#xe48;&#xe2d;&#xe07;&#xe41;&#xe17;&#xe19;</li>
               <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>"&#xe04;&#xe27;&#xe23; / &#xe2d;&#xe32;&#xe08;&#xe08;&#xe30;"</b> &#xe40;&#xe1e;&#xe23;&#xe32;&#xe30;&#xe44;&#xe21;&#xe48;&#xe43;&#xe0a;&#xe48;&#xe02;&#xe49;&#xe2d;&#xe40;&#xe17;&#xe47;&#xe08;&#xe08;&#xe23;&#xe34;&#xe07; &#x2014; &#xe43;&#xe2b;&#xe49;&#xe1a;&#xe2d;&#xe01;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a;&#xe40;&#xe1b;&#xe47;&#xe19;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;&#xe44;&#xe23;</li>
               <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>"&#xe44;&#xe21;&#xe48;&#xe21;&#xe35; &#xe40;&#xe2d;&#xe01;&#xe2a;&#xe32;&#xe23;"</b> &#x2014; &#xe43;&#xe2b;&#xe49;&#xe23;&#xe30;&#xe1a;&#xe38;&#xe27;&#xe48;&#xe32;&#xe44;&#xe1b;&#xe02;&#xe2d;&#xe14;&#xe39;&#xe17;&#xe35;&#xe48;&#xe44;&#xe2b;&#xe19; &#xe43;&#xe04;&#xe23;&#xe1a;&#xe2d;&#xe01;&#xe27;&#xe48;&#xe32;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;&#xe44;&#xe23;</li>
-              <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe2a;&#xe19;&#xe2d;&#xe27;&#xe34;&#xe18;&#xe35;&#xe41;&#xe01;&#xe49;&#xe44;&#xe02; (Auditor &#xe21;&#xe35;&#xe2b;&#xe19;&#xe49;&#xe32;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a;&#xe1b;&#xe31;&#xe0d;&#xe2b;&#xe32; &#xe44;&#xe21;&#xe48;&#xe43;&#xe0a;&#xe48;&#xe41;&#xe01;&#xe49;&#xe44;&#xe02;)</li>
-              <li>&#x2705; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe25;&#xe37;&#xe21;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19; <b>&#xe02;&#xe49;&#xe2d;&#xe14;&#xe35;&#xe14;&#xe49;&#xe27;&#xe22;</b> &#x2014; &#xe1a;&#xe31;&#xe19;&#xe17;&#xe36;&#xe01;&#xe2a;&#xe34;&#xe48;&#xe07;&#xe17;&#xe35;&#xe48;&#xe17;&#xe33;&#xe44;&#xe14;&#xe49;&#xe14;&#xe35;&#xe14;&#xe49;&#xe27;&#xe22; (Good Practice)</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="audit-summary-box">
-          <h4>&#x1F4CC; &#xe2a;&#xe23;&#xe38;&#xe1b;&#xe2a;&#xe39;&#xe15;&#xe23;&#xe01;&#xe32;&#xe23;&#xe40;&#xe02;&#xe35;&#xe22;&#xe19;&#xe23;&#xe32;&#xe22;&#xe07;&#xe32;&#xe19;&#xe17;&#xe35;&#xe48;&#xe14;&#xe35;</h4>
-          <p class="formula-line"><b>5W1H + Evidence + Clause + Impact</b></p>
-          <ul>
-            <li><b>What:</b> &#xe1e;&#xe1a;&#xe2d;&#xe30;&#xe44;&#xe23;</li>
-            <li><b>Where:</b> &#xe1e;&#xe1a;&#xe17;&#xe35;&#xe48;&#xe44;&#xe2b;&#xe19; (&#xe2a;&#xe16;&#xe32;&#xe19;&#xe17;&#xe35;&#xe48; / &#xe40;&#xe04;&#xe23;&#xe37;&#xe48;&#xe2d;&#xe07;&#xe08;&#xe31;&#xe01;&#xe23;)</li>
-            <li><b>When:</b> &#xe1e;&#xe1a;&#xe40;&#xe21;&#xe37;&#xe48;&#xe2d;&#xe44;&#xe23;</li>
-            <li><b>Who:</b> &#xe43;&#xe04;&#xe23;&#xe40;&#xe01;&#xe35;&#xe48;&#xe22;&#xe27;&#xe02;&#xe49;&#xe2d;&#xe07;</li>
-            <li><b>Why:</b> &#xe17;&#xe33;&#xe44;&#xe21;&#xe16;&#xe36;&#xe07;&#xe40;&#xe1b;&#xe47;&#xe19; NC (&#xe2d;&#xe49;&#xe32;&#xe07; Clause)</li>
-            <li><b>How:</b> &#xe1e;&#xe1a;&#xe44;&#xe14;&#xe49;&#xe2d;&#xe22;&#xe48;&#xe32;&#xe07;&#xe44;&#xe23; (&#xe27;&#xe34;&#xe18;&#xe35;&#xe01;&#xe32;&#xe23;&#xe15;&#xe23;&#xe27;&#xe08;)</li>
-          </ul>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-</body>
-</html>
+              <li>&#x274C; &#xe2d;&#xe22;&#xe48;&#xe32;&#xe40;&#xe2a;&#xe19;&#xe2d;&#xe27;&#xe34;&#xe18;&#xe35;&#xe41;&#xe01;&#xe49;&#xe44;&#xe02; (Auditor &#xe21;&#xe35;&#xe2b;&#xe19;&#xe49;&#xe32;&#xe17;&#xe35;&#xe48;&#xe1e;&#xe1a;&#xe1b;&#xe31;&#xe0d;&#xe2b;&#xe32; &#xe44;&#xe21;&#x
