@@ -160,7 +160,7 @@ thead th{
 }
 thead th:nth-child(1){width:44px}
 thead th:nth-child(2){text-align:left}
-thead th:nth-child(3){width:150px}
+thead th:nth-child(3){width:200px;min-width:140px}
 thead th:nth-child(4){text-align:left;width:18%}
 thead th:nth-child(5),thead th:nth-child(6),thead th:nth-child(7){width:38px}
 thead th:nth-child(8){width:15%}
@@ -10064,6 +10064,9 @@ function makeRow(q,idx,isNew){
     var delSpan=document.createElement('span');delSpan.className='del-row';delSpan.textContent='✕ ลบแถวนี้';
     (function(ci){delSpan.onclick=function(){deleteAddedRow(ci);};})(idx);
     td2.appendChild(delSpan);
+    var guideBtn=document.createElement('span');guideBtn.className='del-row';guideBtn.style.cssText='color:#2980b9;cursor:pointer;margin-left:8px';guideBtn.textContent='📋 ดู Guideline';
+    (function(captQ){guideBtn.onclick=function(){showGuidePopup('',captQ,0);};})(q);
+    td2.appendChild(guideBtn);
   }else{
     var qSpan=document.createElement('span');qSpan.className='q-hover';qSpan.innerHTML=escHtml(q.q);
     (function(captQ,captIdx){qSpan.onclick=function(){showGuidePopup(DEPT_DATA[currentDeptIdx].name,captQ,captIdx);};})(q,idx);
@@ -10077,16 +10080,19 @@ function makeRow(q,idx,isNew){
     if(!Array.isArray(q.c))q.c=cArr;
     renderClauseTags(td3,cArr);
   }else{
-    if(q._clauseAlert){
-      var clInput=document.createElement('input');clInput.type='text';clInput.value=q.c||'';
-      clInput.style.cssText='width:100%;border:2px solid #e67e22;border-radius:4px;padding:3px 5px;background:#fff8f0;font-size:.85em';
-      clInput.title='⚠️ ข้อกำหนดเป็นตัวเลข กรุณาตรวจสอบ';
-      clInput.oninput=(function(captQ){return function(){captQ.c=this.value;autoSave();};})(q);
-      td3.appendChild(clInput);
+    if(!q.c||q.c.trim()===''){
+      var clSel=document.createElement('select');
+      clSel.style.cssText='width:100%;font-size:.82em;padding:3px;border-radius:4px;border:2px solid #3498db;background:#f0f8ff';
+      var clDef=document.createElement('option');clDef.value='';clDef.textContent='-- เลือกข้อกำหนด --';clSel.appendChild(clDef);
+      ALL_CLAUSES.forEach(function(c){var opt=document.createElement('option');opt.value=c;opt.textContent=c;clSel.appendChild(opt);});
+      clSel.onchange=(function(captQ){return function(){if(!this.value)return;captQ.c=this.value;captQ._clauseAlert=false;autoSave();renderTable();};})(q);
+      td3.appendChild(clSel);
+    }else if(q._clauseAlert){
+      renderClauseEdit(td3,q,idx);
     }else if(q.c){
-      var clSpan=document.createElement('span');clSpan.className='cl-hover';clSpan.textContent=q.c;
-      (function(captC){clSpan.onclick=function(){showClausePopup(captC);};})(q.c);
-      td3.appendChild(clSpan);
+      var normC=normalizeClauseText(q.c);
+      if(normC!==q.c)q.c=normC;
+      renderClauseView(td3,q,idx);
     }
   }
   tr.appendChild(td3);
@@ -10117,6 +10123,55 @@ function makeRow(q,idx,isNew){
   var qKey=isNew?'add_'+String(idx).replace('add_',''):(q.n||('r'+idx));
   renderPhotoCell(td9,qKey);tr.appendChild(td9);
   return tr;
+}
+function renderClauseView(td,q,idx){
+  td.innerHTML='';
+  var wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;gap:3px';
+  var clSpan=document.createElement('span');clSpan.className='cl-hover';clSpan.style.cssText='flex:1;word-break:break-word';clSpan.textContent=q.c;
+  (function(captC){clSpan.onclick=function(){showClausePopup(captC);};})(q.c);
+  wrap.appendChild(clSpan);
+  var editBtn=document.createElement('span');editBtn.textContent='✏️';editBtn.title='แก้ไขข้อกำหนด';
+  editBtn.style.cssText='cursor:pointer;font-size:.75em;opacity:.5;flex-shrink:0';
+  editBtn.onmouseenter=function(){this.style.opacity='1';};editBtn.onmouseleave=function(){this.style.opacity='.5';};
+  (function(captTd,captQ,captIdx){editBtn.onclick=function(e){e.stopPropagation();renderClauseEdit(captTd,captQ,captIdx);};})(td,q,idx);
+  wrap.appendChild(editBtn);
+  td.appendChild(wrap);
+}
+function renderClauseEdit(td,q,idx){
+  td.innerHTML='';
+  var wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-direction:column;gap:3px';
+  var row1=document.createElement('div');row1.style.cssText='display:flex;gap:3px;align-items:center';
+  var inp=document.createElement('input');inp.type='text';inp.value=q.c||'';
+  inp.style.cssText='flex:1;border:2px solid #3498db;border-radius:4px;padding:3px 5px;font-size:.85em;min-width:0';
+  inp.oninput=(function(captQ){return function(){captQ.c=this.value;autoSave();};})(q);
+  row1.appendChild(inp);
+  var stdSel=document.createElement('select');
+  stdSel.style.cssText='width:auto;font-size:.8em;padding:2px;border-radius:4px;border:1px solid #3498db';
+  stdSel.title='เปลี่ยนมาตรฐาน';
+  stdSel.innerHTML='<option value="">📋</option><option value="ISO 9001:">ISO 9001</option><option value="ISO 22000:">ISO 22000</option><option value="FSSC 22000 Add.">FSSC</option><option value="ISO/TS 22002-1:">ISO/TS</option>';
+  stdSel.onchange=(function(captQ,captInp){return function(){if(!this.value)return;var num=captQ.c.replace(/^[^\d]*/,'').trim();captQ.c=this.value+(num?' '+num:'');captInp.value=captQ.c;this.value='';autoSave();};})(q,inp);
+  row1.appendChild(stdSel);
+  wrap.appendChild(row1);
+  var row2=document.createElement('div');row2.style.cssText='display:flex;gap:4px';
+  var saveBtn=document.createElement('span');saveBtn.textContent='✅';saveBtn.title='บันทึก';
+  saveBtn.style.cssText='cursor:pointer;font-size:.8em';
+  (function(captTd,captQ,captIdx,captInp){saveBtn.onclick=function(){
+    var norm=normalizeClauseText(captInp.value);captQ.c=norm;captQ._clauseAlert=false;autoSave();
+    if(!norm){renderTable();}else{renderClauseView(captTd,captQ,captIdx);}
+  };})(td,q,idx,inp);
+  row2.appendChild(saveBtn);
+  var cancelBtn=document.createElement('span');cancelBtn.textContent='❌';cancelBtn.title='ยกเลิก';
+  cancelBtn.style.cssText='cursor:pointer;font-size:.8em';
+  (function(captTd,captQ,captIdx){cancelBtn.onclick=function(){renderClauseView(captTd,captQ,captIdx);};})(td,q,idx);
+  row2.appendChild(cancelBtn);
+  var clSel=document.createElement('select');clSel.style.cssText='flex:1;font-size:.78em;padding:2px;border-radius:4px;border:1px solid #ccc';
+  var clDef=document.createElement('option');clDef.value='';clDef.textContent='-- เลือกจากรายการ --';clSel.appendChild(clDef);
+  ALL_CLAUSES.forEach(function(c){var opt=document.createElement('option');opt.value=c;opt.textContent=c;clSel.appendChild(opt);});
+  clSel.onchange=(function(captQ,captInp,captTd,captIdx){return function(){if(!this.value)return;captQ.c=this.value;captQ._clauseAlert=false;autoSave();renderClauseView(captTd,captQ,captIdx);};})(q,inp,td,idx);
+  row2.appendChild(clSel);
+  wrap.appendChild(row2);
+  td.appendChild(wrap);
+  inp.focus();inp.select();
 }
 function renderClauseTags(cell,clauseArr){
   cell.innerHTML='';
@@ -10311,6 +10366,7 @@ function parseExcelChecklist(data){
         var clCell=ws['G'+r];
         var qText=qCell?String(qCell.v||'').trim():'';
         var clause=clCell?String(clCell.v||'').trim():'';
+        if(clause)clause=normalizeClauseText(clause);
         if(!qText)continue;
         var clauseOk=true;
         if(clause){
@@ -10421,13 +10477,24 @@ function showGuidePopup(deptName,q,idx){
     if(guide.d){var s=document.createElement('div');s.className='guide-popup-section d-sec';
       s.innerHTML='<h5>📄 เอกสารที่คาดหวัง</h5><p>'+escHtml(guide.d)+'</p>';body.appendChild(s);}
   }else{
-    var ns=document.createElement('div');ns.className='guide-popup-section d-sec';
-    ns.innerHTML='<h5>ℹ️ หมายเหตุ</h5><p>ไม่พบข้อมูล Guideline สำหรับคำถามนี้</p>';body.appendChild(ns);
+    var autoG=generateAutoGuide(q.q,q.c);
+    if(autoG){
+      var ab=document.createElement('div');ab.className='guide-popup-section';ab.style.cssText='background:#fff3e0;border-left:4px solid #ff9800;padding:8px 12px;margin-bottom:10px;border-radius:6px';
+      ab.innerHTML='<p style="margin:0;color:#e65100;font-size:.85em">🤖 <b>Auto-generated Guideline</b> — สร้างจากการตีความคำถามอัตโนมัติ</p>';body.appendChild(ab);
+      if(autoG.clauseDetail){var cs=document.createElement('div');cs.className='guide-popup-section cl-sec';cs.innerHTML='<h5>📖 ข้อกำหนดอ้างอิง</h5><p>'+escHtml(autoG.clauseDetail).replace(/\n/g,'<br>')+'</p>';body.appendChild(cs);}
+      if(autoG.cc){var s=document.createElement('div');s.className='guide-popup-section cc-sec';s.innerHTML='<h5>✅ เกณฑ์สอดคล้อง (Conformity)</h5><p>'+escHtml(autoG.cc).replace(/\n/g,'<br>')+'</p>';body.appendChild(s);}
+      if(autoG.nc){var s=document.createElement('div');s.className='guide-popup-section nc-sec';s.innerHTML='<h5>❌ เกณฑ์ไม่สอดคล้อง (Non-Conformity)</h5><p>'+escHtml(autoG.nc).replace(/\n/g,'<br>')+'</p>';body.appendChild(s);}
+      if(autoG.d){var s=document.createElement('div');s.className='guide-popup-section d-sec';s.innerHTML='<h5>📄 เอกสารที่คาดหวัง</h5><p>'+escHtml(autoG.d)+'</p>';body.appendChild(s);}
+    }else{
+      var ns=document.createElement('div');ns.className='guide-popup-section d-sec';
+      ns.innerHTML='<h5>ℹ️ หมายเหตุ</h5><p>ไม่พบข้อมูล Guideline สำหรับคำถามนี้</p>';body.appendChild(ns);
+    }
   }
   popup.appendChild(body);overlay.appendChild(popup);document.body.appendChild(overlay);
 }
 function showClausePopup(clauseText){
   if(!clauseText)return;
+  clauseText=normalizeClauseText(clauseText);
   var overlay=document.createElement('div');overlay.className='guide-popup-overlay';
   overlay.onclick=function(e){if(e.target===overlay)overlay.remove();};
   var popup=document.createElement('div');popup.className='guide-popup';
@@ -10978,6 +11045,204 @@ function matchGuideForQuestion(deptName,question,idx){
   }
   if(bestScore>=2)return guideItems[bestIdx];
   return idx<guideItems.length?guideItems[idx]:null;
+}
+function normalizeClauseText(raw){
+  if(!raw)return'';
+  var t=raw.trim();
+  if(/^ISO\s+(9001|22000)\s*:\s*\d+\./.test(t)||/^ISO\/TS\s+22002/.test(t)||/^FSSC\s+22000\s+Add/.test(t))return t;
+  if(/iso\s*9001/i.test(t)){var m=t.match(/(\d+\.\d[\d.]*)/);return m?'ISO 9001: '+m[1]:'ISO 9001:2015';}
+  if(/iso\s*22000/i.test(t)){var m=t.match(/(\d+\.\d[\d.]*)/);return m?'ISO 22000: '+m[1]:'ISO 22000:2018';}
+  if(/fssc/i.test(t)||/additional/i.test(t)){var m=t.match(/(\d+\.\d[\d.]*)/);return m?'FSSC 22000 Add. '+m[1]:'FSSC 22000 Additional';}
+  if(/iso\/?ts/i.test(t)||/22002/i.test(t)){var m=t.match(/(\d+\.\d[\d.]*)/);return m?'ISO/TS 22002-1: '+m[1]:'ISO/TS 22002-1';}
+  if(/ghp/i.test(t))return'GHP';
+  if(/gmp/i.test(t))return'GMP';
+  return t;
+}
+var AUTO_GUIDE_TOPICS=[
+{kw:['haccp','ccp','oprp','วิเคราะห์อันตราย','hazard','จุดวิกฤต','critical limit','เฝ้าระวัง'],
+cc:'มี HACCP Plan ครบถ้วนทันสมัย มี CCP/OPRP พร้อม Critical Limit ชัดเจน มี Monitoring ครบทุกรอบ มี Corrective Action เมื่อเบี่ยงเบน',
+nc:'ไม่มี/ไม่ครบ HACCP Plan ไม่กำหนด Critical Limit Monitoring ไม่ครบ ไม่มี Corrective Action',
+d:'HACCP Plan, Hazard Analysis Worksheet, CCP Monitoring Records, Corrective Action Records, Validation Records'},
+{kw:['เอกสาร','document','ควบคุมเอกสาร','master list','revision','อนุมัติเอกสาร','บันทึก','record'],
+cc:'มีระบบควบคุมเอกสารชัดเจน เอกสารได้รับอนุมัติ เป็นฉบับปัจจุบัน มี Master List จัดเก็บบันทึกครบถ้วน อ่านออกได้',
+nc:'เอกสารไม่ได้อนุมัติ ใช้ฉบับเก่า ไม่มี Master List บันทึกไม่ครบ/อ่านไม่ออก',
+d:'Document Control Procedure, Master List, Distribution Records, Revision History'},
+{kw:['อบรม','ฝึกอบรม','training','ความสามารถ','competence','สมรรถนะ'],
+cc:'มีแผนอบรมประจำปี พนักงานได้รับอบรมตามกำหนด มีบันทึกและใบประเมินผลครบ ประเมิน Competence',
+nc:'ไม่มีแผนอบรม พนักงานไม่ได้อบรมตามกำหนด ไม่มีบันทึก/ผลประเมิน',
+d:'Training Plan, Training Records, ใบประเมินผล, Training Matrix, Competence Records'},
+{kw:['สุขลักษณะ','gmp','ghp','hygiene','ล้างมือ','เครื่องแต่งกาย','สุขอนามัย','ppe','หมวก','เครื่องประดับ'],
+cc:'พนักงานปฏิบัติตามกฎ GMP/GHP สวม PPE ครบ ล้างมือถูกวิธี ไม่สวมเครื่องประดับ ผ่านการตรวจสุขลักษณะ',
+nc:'ไม่ปฏิบัติตามกฎ GMP/GHP ไม่สวม PPE ล้างมือไม่ถูกวิธี สวมเครื่องประดับในพื้นที่ผลิต',
+d:'GMP/GHP Rules, Hygiene Checklist, บันทึกตรวจสุขลักษณะ, WI การล้างมือ'},
+{kw:['ทำความสะอาด','cleaning','sanitation','ล้าง','cip','ฆ่าเชื้อ','sanitize','สุขาภิบาล'],
+cc:'มีแผน/ตารางทำความสะอาด ปฏิบัติตามความถี่ที่กำหนด มีบันทึกครบ ตรวจสอบประสิทธิภาพ (ATP/Swab)',
+nc:'ไม่มีแผนทำความสะอาด ไม่ปฏิบัติตามตาราง ไม่มีบันทึก ไม่ตรวจสอบประสิทธิภาพ',
+d:'Cleaning Schedule, Cleaning SOP/WI, บันทึกทำความสะอาด, ATP/Swab Results'},
+{kw:['สัตว์พาหะ','pest','แมลง','หนู','นก','กำจัดสัตว์','มด','แมลงสาบ'],
+cc:'มีสัญญา Pest Control มีแผนผังจุดวางเหยื่อ/กับดัก ตรวจตามความถี่ ไม่พบสัตว์พาหะ มี Trend Analysis',
+nc:'ไม่มีระบบ Pest Control พบสัตว์พาหะในพื้นที่ ไม่มีบันทึก ไม่มีแผนผัง',
+d:'สัญญา Pest Control, แผนผังจุดวาง, บันทึกตรวจ, Trend Analysis Report'},
+{kw:['บำรุงรักษา','maintenance','ซ่อมบำรุง','pm','เครื่องจักร','preventive','อุปกรณ์'],
+cc:'มีแผน PM ครอบคลุมเครื่องจักรสำคัญ ดำเนินการตามแผน มีบันทึกครบ อะไหล่พร้อม สภาพเครื่องดี',
+nc:'ไม่มีแผน PM ไม่ปฏิบัติตามแผน ไม่มีบันทึก เครื่องจักรชำรุดแต่ยังใช้งาน',
+d:'PM Plan, บันทึกซ่อมบำรุง, Work Order, Machine/Equipment List'},
+{kw:['สอบเทียบ','calibration','เครื่องมือวัด','เครื่องชั่ง','เทอร์โมมิเตอร์'],
+cc:'มีรายการเครื่องมือวัด สอบเทียบตามแผน ใบรับรองถูกต้อง ติดสติ๊กเกอร์สถานะ ทำ Intermediate Check',
+nc:'ไม่มีแผนสอบเทียบ ดำเนินการไม่ครบ/เกินกำหนด ไม่มีใบรับรอง ไม่ติดสติ๊กเกอร์',
+d:'Calibration List & Plan, ใบรับรองผลสอบเทียบ, Intermediate Check Records'},
+{kw:['อุณหภูมิ','temperature','ห้องเย็น','แช่เย็น','แช่แข็ง','cooling','cold chain'],
+cc:'บันทึกอุณหภูมิตามความถี่ ค่าอยู่ในเกณฑ์ มีระบบแจ้งเตือน มี Corrective Action เมื่อเกินเกณฑ์',
+nc:'ไม่มีบันทึกอุณหภูมิ ค่าเกินเกณฑ์แต่ไม่แก้ไข ไม่มีระบบ Alert ไม่มี Data Logger',
+d:'บันทึกอุณหภูมิ, Data Logger Records, Temperature Alert Records, SOP ควบคุมอุณหภูมิ'},
+{kw:['สอบกลับ','traceability','lot','batch','ย้อนกลับ','ตามรอย','recall','เรียกคืน'],
+cc:'ระบบสอบกลับครอบคลุม วัตถุดิบ→ผลิต→สำเร็จรูป→ลูกค้า มี Mock Recall ประจำปี ทำได้ในเวลาที่กำหนด',
+nc:'ไม่มีระบบสอบกลับ ย้อนรอยไม่ได้ ไม่ทำ Mock Recall หรือทำแล้วไม่ผ่าน',
+d:'Traceability Procedure, Batch/Lot Records, Mass Balance, Mock Recall Report'},
+{kw:['สารก่อภูมิแพ้','allergen','แพ้','กลูเตน','cross-contact','ปนเปื้อนข้าม'],
+cc:'มีรายการ Allergen มีมาตรการป้องกัน Cross-Contact ติดฉลากถูกต้อง ลำดับผลิตเหมาะสม มี Cleaning Validation',
+nc:'ไม่มีรายการ Allergen ไม่ป้องกัน Cross-Contact ฉลากไม่ถูกต้อง/ไม่ครบ',
+d:'Allergen List/Matrix, Cleaning Validation, Production Schedule, ฉลากสินค้า'},
+{kw:['ตรวจสอบภายใน','internal audit','ตรวจประเมิน','audit plan'],
+cc:'มีแผน IA ครอบคลุมทุกข้อกำหนด ผู้ตรวจมีคุณสมบัติ/เป็นอิสระ ดำเนินการตามแผน มีรายงานและ Follow-up',
+nc:'ไม่มีแผน IA ดำเนินการไม่ครบ ผู้ตรวจไม่เป็นอิสระ ไม่มีรายงาน/Follow-up',
+d:'Audit Plan/Schedule, Auditor Qualification, Audit Reports, CAR/Follow-up Records'},
+{kw:['ทบทวนโดยฝ่ายบริหาร','management review','ทบทวนฝ่ายบริหาร','ประชุมทบทวน'],
+cc:'ทบทวนฝ่ายบริหารตามกำหนด ครอบคลุม Input/Output ตาม ISO มีรายงาน มี Action Items ติดตามผล',
+nc:'ไม่มีการทบทวน ไม่ครอบคลุม Input ที่กำหนด ไม่มีบันทึก ไม่ติดตาม Action Items',
+d:'Management Review Procedure, รายงานการประชุม, Input Data, Action Items'},
+{kw:['แก้ไข','corrective','car','capa','root cause','สาเหตุ','ป้องกัน'],
+cc:'มีระบบ CAPA ชัดเจน วิเคราะห์สาเหตุรากชัดเจน กำหนดมาตรการแก้ไข/ป้องกัน ติดตามประสิทธิผล ปิด CAR ตามกำหนด',
+nc:'ไม่มีระบบ CAPA วิเคราะห์สาเหตุไม่เพียงพอ ไม่มีมาตรการป้องกัน ไม่ปิด CAR ตามกำหนด',
+d:'CAPA Procedure, CAR Form, Root Cause Analysis, Effectiveness Review'},
+{kw:['ซัพพลายเออร์','supplier','ผู้ขาย','จัดซื้อ','purchasing','approved supplier','ประเมินผู้ขาย'],
+cc:'มีเกณฑ์คัดเลือก/ประเมิน มี Approved Supplier List มี COA/ใบรับรอง ประเมินซ้ำตามกำหนด',
+nc:'ไม่มีเกณฑ์คัดเลือก ใช้ Supplier นอก ASL ไม่มี COA ไม่ประเมินซ้ำ',
+d:'Supplier Approval Procedure, Approved Supplier List, COA, Evaluation Records'},
+{kw:['ข้อร้องเรียน','complaint','ร้องเรียน','ลูกค้า','customer feedback'],
+cc:'มีระบบรับ/จัดการข้อร้องเรียน วิเคราะห์สาเหตุ ตอบกลับภายในกำหนด มี Trend Analysis',
+nc:'ไม่มีระบบจัดการ ไม่วิเคราะห์สาเหตุ ไม่ตอบกลับ ไม่มี Trend Analysis',
+d:'Complaint Procedure, Complaint Log, Investigation Reports, Trend Analysis'},
+{kw:['ฉลาก','labeling','label','วันผลิต','วันหมดอายุ','ส่วนผสม','ingredient'],
+cc:'ฉลากถูกต้องตามกฎหมาย ระบุส่วนผสม Allergen วันผลิต/หมดอายุ ตรวจสอบก่อนใช้',
+nc:'ฉลากไม่ถูกต้อง/ไม่ครบ ไม่ระบุ Allergen วันที่ผิด ใช้ฉลากผิดรุ่น',
+d:'Label Specification, Label Approval, Line Clearance Checklist, Label Change Records'},
+{kw:['สิ่งแปลกปลอม','foreign body','metal detect','เครื่องตรวจจับโลหะ','x-ray','แม่เหล็ก','กรอง','sieve'],
+cc:'มีมาตรการป้องกันสิ่งแปลกปลอม Metal Detector/X-ray สอบเทียบ/ทดสอบตามกำหนด บันทึกครบ',
+nc:'ไม่มีมาตรการ เครื่องไม่ได้สอบเทียบ/ทดสอบ บันทึกไม่ครบ ไม่มี Reject Protocol',
+d:'Foreign Body Control Procedure, Metal Detector Test Records, Reject/Rework Records'},
+{kw:['น้ำ','water','ไอน้ำ','steam','อากาศอัด','compressed air','คุณภาพน้ำ'],
+cc:'มีแผนตรวจคุณภาพน้ำ ผลตรวจในเกณฑ์ ระบบจ่ายน้ำไม่มี Cross-Connection มีแผนผังท่อน้ำ',
+nc:'ไม่มีแผนตรวจน้ำ ผลเกินเกณฑ์แต่ไม่แก้ไข มี Cross-Connection ไม่มีแผนผัง',
+d:'Water Analysis Plan, ผลตรวจคุณภาพน้ำ, แผนผังระบบน้ำ, Water Treatment Records'},
+{kw:['จัดเก็บ','storage','warehouse','คลัง','fifo','fefo'],
+cc:'จัดเก็บเป็นระเบียบ แยกประเภทชัดเจน ใช้ FIFO/FEFO ไม่วางกับพื้น อุณหภูมิ/ความชื้นเหมาะสม',
+nc:'จัดเก็บไม่เป็นระเบียบ ไม่แยกประเภท ไม่ใช้ FIFO/FEFO วางกับพื้น สภาพแวดล้อมไม่เหมาะสม',
+d:'Storage Procedure, Stock Records, FIFO/FEFO Records, บันทึกอุณหภูมิ/ความชื้นคลัง'},
+{kw:['ฉุกเฉิน','emergency','อัคคีภัย','ไฟไหม้','crisis','ซ้อมดับเพลิง','อพยพ'],
+cc:'มีแผนฉุกเฉินครอบคลุม ซ้อมตามกำหนด พนักงานรู้หน้าที่ อุปกรณ์ดับเพลิงพร้อมใช้',
+nc:'ไม่มีแผนฉุกเฉิน ไม่เคยซ้อม พนักงานไม่รู้หน้าที่ อุปกรณ์หมดอายุ/ไม่พร้อม',
+d:'Emergency Plan, บันทึกการซ้อม, บันทึกตรวจอุปกรณ์ดับเพลิง, Emergency Contact List'},
+{kw:['food defense','food fraud','ปลอมปน','vulnerability','threat','taccp','vaccp'],
+cc:'มี Food Defense Plan/TACCP/VACCP ประเมินภัยคุกคาม มีมาตรการป้องกัน ทบทวนประจำปี',
+nc:'ไม่มี Food Defense Plan ไม่ประเมินภัยคุกคาม ไม่มีมาตรการ ไม่ทบทวน',
+d:'Food Defense Plan, TACCP/VACCP Assessment, Security Measures Records'},
+{kw:['สเปค','specification','คุณลักษณะ','มาตรฐานผลิตภัณฑ์','product spec','สูตร','formula'],
+cc:'มี Product Spec ครบทุกรายการ ทันสมัย ลูกค้าอนุมัติ ครอบคลุม Physical/Chemical/Micro',
+nc:'ไม่มี Product Spec ข้อมูลไม่ทันสมัย ลูกค้าไม่อนุมัติ ไม่ครอบคลุม',
+d:'Product Specification, COA, ผลตรวจวิเคราะห์, Customer Approval Records'},
+{kw:['ผลิตภัณฑ์ไม่เป็นไป','nonconforming','ของเสีย','สินค้าเสีย','reject','rework','hold'],
+cc:'มีระบบจัดการสินค้าไม่เป็นไปตามข้อกำหนด มีพื้นที่ Hold ชัดเจน มีบันทึก มีอำนาจตัดสินใจ',
+nc:'ไม่มีระบบจัดการ ไม่มีพื้นที่ Hold สินค้า Reject ปนกับสินค้าดี ไม่มีบันทึก',
+d:'Nonconforming Product Procedure, Hold/Release Records, Reject/Rework Records'},
+{kw:['ขนส่ง','transport','logistics','รถขนส่ง','โลจิสติกส์','จัดส่ง','delivery'],
+cc:'รถขนส่งสะอาด อุณหภูมิเหมาะสม มีบันทึกตรวจสภาพ ไม่ขนร่วมกับสิ่งที่ไม่เข้ากัน',
+nc:'รถขนส่งสกปรก อุณหภูมิไม่เหมาะสม ไม่มีบันทึก ขนร่วมกับสิ่งที่ไม่เข้ากัน',
+d:'Transport Inspection Checklist, Temperature Records, Delivery Records'},
+{kw:['ประเด็น','บริบท','context','ภายใน','ภายนอก','ปัจจัย','สภาพแวดล้อม','swot','ส่วนได้ส่วนเสีย','stakeholder','ผู้มีส่วนได้'],
+cc:'มีการระบุประเด็นภายใน/ภายนอกที่เกี่ยวข้อง ระบุผู้มีส่วนได้ส่วนเสียและความต้องการ ทบทวนเป็นระยะ',
+nc:'ไม่ระบุประเด็น/ผู้มีส่วนได้ส่วนเสีย ไม่ทบทวน ไม่ครอบคลุมประเด็นที่สำคัญ',
+d:'Context Analysis, Interested Parties List, Risk & Opportunity Register'},
+{kw:['นโยบาย','policy','วัตถุประสงค์','objective','เป้าหมาย','target','kpi'],
+cc:'มีนโยบายที่ชัดเจน สื่อสารทั่วถึง มีวัตถุประสงค์/เป้าหมายที่วัดได้ ทบทวนประจำปี',
+nc:'ไม่มีนโยบาย ไม่สื่อสาร ไม่มีวัตถุประสงค์ที่วัดได้ ไม่ทบทวน',
+d:'Policy Document, Objectives & Targets, KPI Records, Communication Records'},
+{kw:['บทบาท','ความรับผิดชอบ','หน้าที่','role','responsibility','authority','อำนาจ','แต่งตั้ง','ทีม','หัวหน้าทีม','food safety team'],
+cc:'มีการกำหนดบทบาท/ความรับผิดชอบชัดเจน มีคำสั่งแต่งตั้ง สื่อสารให้ทราบ มีคุณสมบัติเหมาะสม',
+nc:'ไม่กำหนดบทบาท/ความรับผิดชอบ ไม่มีคำสั่งแต่งตั้ง ไม่สื่อสาร บุคลากรไม่ทราบหน้าที่',
+d:'Organization Chart, Appointment Letters, Job Descriptions, Responsibility Matrix'},
+{kw:['ขอบเขต','scope','ครอบคลุม','ผลิตภัณฑ์','กระบวนการ','process','site','สถานที่'],
+cc:'ขอบเขตระบุชัดเจน ครอบคลุมทุกผลิตภัณฑ์/กระบวนการ/สถานที่ มีเอกสาร ไม่มีการยกเว้นที่ไม่เหมาะสม',
+nc:'ขอบเขตไม่ชัดเจน ไม่ครอบคลุม มีการยกเว้นโดยไม่มีเหตุผล ไม่เป็นเอกสาร',
+d:'Scope Statement, Process Map/Flow, Site Map, Exclusion Justification'},
+{kw:['สื่อสาร','communication','ภายใน','แจ้ง','ประชาสัมพันธ์','ประกาศ'],
+cc:'มีระบบสื่อสารภายใน/ภายนอกที่มีประสิทธิภาพ กำหนดเรื่อง/ช่องทาง/ผู้รับผิดชอบ/ความถี่ มีหลักฐาน',
+nc:'ไม่มีระบบสื่อสาร ข้อมูลไม่ถึงผู้เกี่ยวข้อง ไม่มีหลักฐานการสื่อสาร',
+d:'Communication Procedure, บันทึกการประชุม, ประกาศ/บอร์ด, Email/Line Records'},
+{kw:['ความเสี่ยง','risk','โอกาส','opportunity','ประเมินความเสี่ยง','ลดความเสี่ยง'],
+cc:'มีการประเมินความเสี่ยงและโอกาส มีแผนจัดการ ดำเนินการตามแผน ทบทวนประสิทธิผล',
+nc:'ไม่ประเมินความเสี่ยง ไม่มีแผนจัดการ ไม่ดำเนินการ ไม่ทบทวน',
+d:'Risk Assessment Matrix, Risk Treatment Plan, Opportunity Register, Review Records'},
+{kw:['ทรัพยากร','resource','งบประมาณ','budget','บุคลากร','โครงสร้างพื้นฐาน','infrastructure'],
+cc:'จัดสรรทรัพยากรเพียงพอ (บุคลากร งบประมาณ อุปกรณ์ โครงสร้างพื้นฐาน) ทบทวนความเพียงพอ',
+nc:'ทรัพยากรไม่เพียงพอ ไม่จัดสรรงบประมาณ บุคลากรไม่พอ โครงสร้างพื้นฐานบกพร่อง',
+d:'Resource Plan, Budget Records, Infrastructure Maintenance, HR Records'},
+{kw:['ผู้บริหาร','leadership','commitment','ภาวะผู้นำ','ผู้นำ','บริหารระดับสูง','top management'],
+cc:'ผู้บริหารแสดงภาวะผู้นำ กำหนดนโยบาย จัดสรรทรัพยากร ทบทวนระบบ สนับสนุนการปรับปรุง',
+nc:'ผู้บริหารไม่มีส่วนร่วม ไม่จัดสรรทรัพยากร ไม่ทบทวนระบบ ไม่สนับสนุน',
+d:'Management Review Minutes, Resource Allocation Records, Policy Sign-off'},
+{kw:['กฎหมาย','legal','regulatory','ข้อบังคับ','พรบ','มาตรฐานบังคับ','ราชกิจจา'],
+cc:'ระบุกฎหมายที่เกี่ยวข้องครบ ติดตามการเปลี่ยนแปลง ปฏิบัติตาม มีหลักฐาน ใบอนุญาตครบ',
+nc:'ไม่ระบุกฎหมายที่เกี่ยวข้อง ไม่ติดตามการเปลี่ยนแปลง ไม่ปฏิบัติตาม ใบอนุญาตหมดอายุ',
+d:'Legal Register, ใบอนุญาตต่างๆ, Compliance Assessment, Update Records'},
+{kw:['ปรับปรุง','improvement','continual','พัฒนา','ต่อเนื่อง','อัพเดต','update','เปลี่ยนแปลง','change'],
+cc:'มีระบบปรับปรุงอย่างต่อเนื่อง วิเคราะห์ข้อมูล กำหนดโครงการปรับปรุง ติดตามผล',
+nc:'ไม่มีระบบปรับปรุง ไม่วิเคราะห์ข้อมูล ไม่ดำเนินการปรับปรุง ไม่ติดตามผล',
+d:'Improvement Plan, Data Analysis, Project Records, Effectiveness Review'},
+{kw:['ตรวจสอบ','verification','ทวนสอบ','validation','ยืนยัน','ตรวจรับ','inspect'],
+cc:'มีระบบตรวจสอบ/ทวนสอบตามแผน ดำเนินการครบ ผลเป็นที่ยอมรับ มีบันทึก',
+nc:'ไม่มีระบบตรวจสอบ ดำเนินการไม่ครบ ผลไม่ผ่านแต่ไม่แก้ไข ไม่มีบันทึก',
+d:'Verification Plan, Validation Protocol, Inspection Records, Test Results'},
+{kw:['ภูมิอากาศ','climate','สภาพอากาศ','carbon','ก๊าซเรือนกระจก','สิ่งแวดล้อม','environment'],
+cc:'มีการพิจารณาผลกระทบจากการเปลี่ยนแปลงสภาพภูมิอากาศ ระบุความเสี่ยง มีแผนรับมือ',
+nc:'ไม่พิจารณาผลกระทบจากสภาพภูมิอากาศ ไม่มีแผนรับมือ ไม่ประเมินความเสี่ยงที่เกี่ยวข้อง',
+d:'Climate Risk Assessment, Adaptation Plan, Environmental Monitoring Records'}
+];
+function generateAutoGuide(questionText,clauseText){
+  if(!questionText)return null;
+  var q=questionText.toLowerCase();
+  var matches=[];
+  AUTO_GUIDE_TOPICS.forEach(function(topic){
+    var score=0;
+    topic.kw.forEach(function(kw){if(q.indexOf(kw.toLowerCase())>=0)score++;});
+    if(score>0)matches.push({topic:topic,score:score});
+  });
+  if(matches.length===0)return null;
+  matches.sort(function(a,b){return b.score-a.score;});
+  var best=matches[0];
+  var guide={cc:best.topic.cc,nc:best.topic.nc,d:best.topic.d,auto:true};
+  if(matches.length>1&&matches[1].score>=best.score*0.6){
+    guide.cc+='\n\n[เพิ่มเติม] '+matches[1].topic.cc;
+    guide.nc+='\n\n[เพิ่มเติม] '+matches[1].topic.nc;
+    guide.d+=', '+matches[1].topic.d;
+  }
+  if(clauseText){
+    var norm=normalizeClauseText(clauseText);
+    var stdKey=null;
+    if(norm.indexOf('ISO 9001')>=0)stdKey='iso9001';
+    else if(norm.indexOf('ISO 22000')>=0)stdKey='iso22000';
+    else if(norm.indexOf('FSSC')>=0||norm.indexOf('Add')>=0)stdKey='add';
+    else if(norm.indexOf('ISO/TS')>=0)stdKey='prp';
+    if(stdKey&&typeof REQS_DATA!=='undefined'&&REQS_DATA[stdKey]){
+      var num=norm.match(/(\d+\.[\d.]+)/);
+      if(num){
+        var desc=REQS_DATA[stdKey][num[1]];
+        if(!desc){var parent=num[1].replace(/\.\d+$/,'');desc=REQS_DATA[stdKey][parent];}
+        if(desc)guide.clauseDetail=norm+'\n'+desc;
+      }
+    }
+  }
+  return guide;
 }
 function checkWritingProfessionalism(findingText,remarkText,selType){
   // Learned from sample audits: best report (บรรจุ) = objective evidence with numbers/docs;
