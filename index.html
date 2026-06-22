@@ -9866,6 +9866,16 @@ function openExpandTA(ta,questionText){
 }
 
 var DEPT_DATA=JSON.parse(document.getElementById('deptDataJson').textContent);
+var DEPT_AFFIL={'Top Management':'โรงงานน้ำตาลมิตรลาว','FSST':'โรงงานน้ำตาลมิตรลาว','Food Safety Team':'โรงงานน้ำตาลมิตรลาว','บริการไร่':'ด้านอ้อย','บริหารคุณภาพ':'สังกัด กรรมการผู้จัดการบริษัท','วิเคราะห์คุณภาพ':'สังกัด กรรมการผู้จัดการบริษัท','ลูกหีบ':'ฝ่ายโรงงาน','หม้อต้ม':'ฝ่ายโรงงาน','หม้อเคี่ยว':'ฝ่ายโรงงาน','หม้อปั่น':'ฝ่ายโรงงาน','บรรจุ':'ด้านบริหารสำนักงาน','เครื่องมือควบคุม':'ฝ่ายโรงงาน','ไฟฟ้าผลิต':'ฝ่ายโรงงาน','ซ่อมบำรุงไฟฟ้า':'ฝ่ายโรงงาน','ซ่อมบำรุงเครื่องกล':'ฝ่ายโรงงาน','ขายและการตลาด':'ด้านบริหารสำนักงาน','พัสดุ':'ด้านบริหารสำนักงาน','คลังสินค้าและห้องชั่ง':'ด้านบริหารสำนักงาน','IT':'ฝ่ายบัญชีและการเงิน','สารสนเทศ':'ฝ่ายบัญชีและการเงิน','เทคโนโลยีสารสนเทศ':'ฝ่ายบัญชีและการเงิน','จัดซื้อ':'ด้านบริหารสำนักงาน','ธุรการและจัดซื้อ':'ด้านบริหารสำนักงาน','ทรัพยากรบุคคล':'ด้านบริหารสำนักงาน','หม้อไอน้ำ':'ฝ่ายโรงงาน'};
+function getDeptAffil(name){
+  if(!name)return'';
+  for(var k in DEPT_AFFIL){if(name.indexOf(k)>=0)return DEPT_AFFIL[k];}
+  return'';
+}
+function getDeptDisplayName(name){
+  var a=getDeptAffil(name);
+  return a?name+' — '+a:name;
+}
 var ALL_CLAUSES=(function(){
   var raw=JSON.parse(document.getElementById('clausesDataJson').textContent);
   var groups={iso9001:[],iso22000:[],isots:[],fssc:[],other:[]};
@@ -9977,7 +9987,7 @@ var currentDeptIdx=-1,addedRows=[],autoSaveTimer=null,photos={},_photoModalKey=n
   DEPT_DATA.forEach(function(d,i){
     var opt=document.createElement('option');
     opt.value=i;
-    opt.textContent=d.name+' ('+d.questions.length+' ข้อ)';
+    opt.textContent=getDeptDisplayName(d.name)+' ('+d.questions.length+' ข้อ)';
     sel.appendChild(opt);
   });
   initSignatures();
@@ -10017,8 +10027,8 @@ function showAuditPage(){
   var ap=document.getElementById('auditPage');
   ap.style.display='block';ap.style.animation='fadeIn .4s ease forwards';
   var dept=DEPT_DATA[currentDeptIdx];
-  document.getElementById('deptLockedName').textContent=dept.name;
-  document.getElementById('tableTitle').textContent='รายการตรวจสอบ — '+dept.name;
+  document.getElementById('deptLockedName').textContent=getDeptDisplayName(dept.name);
+  document.getElementById('tableTitle').textContent='รายการตรวจสอบ — '+getDeptDisplayName(dept.name);
   renderTable();updateStats();
 }
 function changeDept(){
@@ -10068,15 +10078,7 @@ function renderTable(){
   tbody.innerHTML='';
   if(currentDeptIdx<0)return;
   var questions=DEPT_DATA[currentDeptIdx].questions;
-  var lastSec=null;
   questions.forEach(function(q,i){
-    if(q.sec&&q.sec!==lastSec){
-      lastSec=q.sec;
-      var hrow=document.createElement('tr');hrow.className='section-header-row';
-      var htd=document.createElement('td');htd.colSpan=9;
-      htd.innerHTML='<div class="section-header">'+escHtml(q.sec)+'</div>';
-      hrow.appendChild(htd);tbody.appendChild(hrow);
-    }
     tbody.appendChild(makeRow(q,i,false));
   });
   addedRows.forEach(function(r,i){tbody.appendChild(makeRow(r,'add_'+i,true));});
