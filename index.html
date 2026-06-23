@@ -286,7 +286,8 @@ td .cl-hover{cursor:help;border-bottom:1px dashed #f6ad55}
   .ta-expand-btn{display:none !important}
   .audit-manual-btn{display:none !important}
   .print-doc-footer{display:block !important;position:fixed;bottom:6px;right:10px;font-size:7pt;color:#888;font-family:Arial,sans-serif}
-  td textarea{max-height:none !important;height:auto !important;overflow:visible !important}
+  td textarea{max-height:none !important;height:auto !important;overflow:visible !important;resize:none !important}
+  td div[style*="white-space"]{overflow:visible !important;word-break:break-word}
   .scroll-bottom-btn{display:none !important}
 }
 @media(max-width:768px){
@@ -10724,6 +10725,15 @@ function validateRows(){
 }
 function doPrint(){
   buildPrintPhotoSection();
+  var textareas=document.querySelectorAll('td textarea');
+  var savedStyles=[];
+  textareas.forEach(function(ta){
+    savedStyles.push(ta.style.cssText);
+    ta.style.height='auto';
+    ta.style.maxHeight='none';
+    ta.style.overflow='visible';
+    ta.style.height=ta.scrollHeight+'px';
+  });
   var badge=null;
   if(lastAuditScore!==null){
     badge=document.createElement('div');
@@ -10737,6 +10747,9 @@ function doPrint(){
     document.head.appendChild(style);
   }
   window.print();
+  textareas.forEach(function(ta,i){
+    ta.style.cssText=savedStyles[i];
+  });
   if(badge){badge.remove();document.getElementById('printScoreStyle').remove();}
 }
 function doAuditReview(){
@@ -11638,7 +11651,7 @@ function doPrintPreview(){
   clone.querySelectorAll('.dept-locked-label').forEach(function(el){el.style.display='none';});
   clone.querySelectorAll('textarea').forEach(function(ta){
     var div=document.createElement('div');
-    div.style.cssText='white-space:pre-wrap;font-size:inherit;padding:4px;min-height:20px;';
+    div.style.cssText='white-space:pre-wrap;word-break:break-word;font-size:inherit;padding:4px;min-height:20px;';
     div.textContent=ta.value;
     ta.parentNode.replaceChild(div,ta);
   });
