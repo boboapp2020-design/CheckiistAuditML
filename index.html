@@ -285,6 +285,9 @@ td .cl-hover{cursor:help;border-bottom:1px dashed #f6ad55}
   thead{position:relative;top:auto}
   .ta-expand-btn{display:none !important}
   .audit-manual-btn{display:none !important}
+  .print-doc-footer{display:block !important;position:fixed;bottom:6px;right:10px;font-size:7pt;color:#888;font-family:Arial,sans-serif}
+  td textarea{max-height:none !important;height:auto !important;overflow:visible !important}
+  .scroll-bottom-btn{display:none !important}
 }
 @media(max-width:768px){
   .form-row{flex-direction:column}
@@ -435,6 +438,14 @@ thead th:nth-child(9){width:80px}
 .scroll-top-btn.show{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
 .scroll-top-btn:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 8px 22px rgba(27,107,147,.45)}
 @media print{.scroll-top-btn{display:none !important}}
+.scroll-bottom-btn{position:fixed;right:22px;bottom:82px;width:50px;height:50px;border-radius:50%;border:none;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;font-size:1.1em;cursor:pointer;box-shadow:0 4px 16px rgba(231,76,60,.35);z-index:9000;opacity:0;visibility:hidden;transform:translateY(16px) scale(.85);transition:opacity .3s,transform .3s,visibility .3s;display:flex;align-items:center;justify-content:center}
+.scroll-bottom-btn.show{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.scroll-bottom-btn:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 8px 22px rgba(231,76,60,.45)}
+@keyframes rowFlash{0%,100%{background:transparent;box-shadow:none}25%,75%{background:#fff3cd;box-shadow:0 0 0 3px #ffc107 inset}50%{background:#ffe066;box-shadow:0 0 0 4px #f59e0b inset}}
+tr.row-flash>td{animation:rowFlash 1.8s ease 2;-webkit-print-color-adjust:exact}
+.review-item.clickable{cursor:pointer;transition:background .15s,transform .15s;border-radius:6px}
+.review-item.clickable:hover{background:rgba(59,130,246,.18);transform:translateX(4px)}
+.review-item.clickable:hover::after{content:' → ไปที่ข้อนี้';color:#3b82f6;font-size:.8em;font-weight:600}
 .audit-rules-section{margin-top:8px}
 .audit-rules-header{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#1B6B93,#34a0a4);color:#fff;padding:16px 20px;border-radius:14px;margin-bottom:14px}
 .audit-rules-header h3{margin:0;font-size:1.05em;font-weight:700;line-height:1.4}
@@ -10008,10 +10019,13 @@ function goHome(){
   wp.style.display='flex';wp.style.animation='fadeIn .4s ease forwards';
 }
 function scrollToTop(){window.scrollTo({top:0,behavior:'smooth'});}
+function scrollToBottom(){window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});}
 window.addEventListener('scroll',function(){
   var btn=document.getElementById('scrollTopBtn');
-  if(!btn)return;
-  if(window.scrollY>300)btn.classList.add('show');else btn.classList.remove('show');
+  var btnDown=document.getElementById('scrollBottomBtn');
+  var atBottom=window.innerHeight+window.scrollY>=document.body.scrollHeight-200;
+  if(btn){if(window.scrollY>300)btn.classList.add('show');else btn.classList.remove('show');}
+  if(btnDown){if(window.scrollY>300&&!atBottom)btnDown.classList.add('show');else btnDown.classList.remove('show');}
 });
 function confirmDept(){
   var sel=document.getElementById('deptSelMain');
@@ -10088,6 +10102,7 @@ function makeRow(q,idx,isNew){
   var tr=document.createElement('tr');
   if(isNew)tr.className='new-row';
   tr.dataset.idx=idx;
+  if(q.n)tr.dataset.qn=q.n;
   var td1=document.createElement('td');
   td1.textContent=isNew?'✶':(q.n||'');
   tr.appendChild(td1);
@@ -10891,11 +10906,11 @@ function doAuditReview(){
   dept.questions.forEach(function(q){if(q._sel_NC)ncCount++;if(q._sel_B)bCount++;});
   addedRows.forEach(function(ar){if(ar._sel_NC)ncCount++;if(ar._sel_B)bCount++;});
   var completenessScore=totalQuestions>0?Math.round((completedCount/totalQuestions)*60*100)/100:0;
-  var goodScore=totalQuestions>0?Math.min(40,Math.round((qualityGoods.length/totalQuestions)*40*100)/100):0;
+  var goodScore=(function(n){if(n>=81)return 40;if(n>=41)return 40*0.25+(n-40)*0.5;return n*0.25;})(qualityGoods.length);
   var informalCount=0;
   qualityIssues.forEach(function(qi){if(qi.msg.indexOf('[INFORMAL]')===0)informalCount++;});
   var normalQualityCount=qualityIssues.length-informalCount;
-  var qualityDeduct=normalQualityCount*0.20;
+  var qualityDeduct=(function(n){if(n>=81)return 40;if(n>=41)return 40*0.25+(n-40)*0.5;return n*0.25;})(normalQualityCount);
   var informalDeduct=informalCount*5;
   var ncBonus=ncCount>=10?20:ncCount>=5?15:ncCount>=3?10:ncCount>=2?10:ncCount>=1?5:0;
   var formPenalty=issues.length;
@@ -11434,7 +11449,10 @@ function showReviewReport(data){
   container.className='review-container';
   container.id='reviewContainerPrint';
   var html='';
-  html+='<div class="review-summary">';
+  html+='<div class="review-summary" style="position:relative">';
+  var scoreEmoji=data.auditScore>=100?'🤩':data.auditScore>=95?'😄':data.auditScore>=85?'😊':data.auditScore>=75?'🙂':data.auditScore>=50?'😟':'😡';
+  var emojiGlow=data.auditScore>=100?'#ffd700':data.auditScore>=95?'#4ade80':data.auditScore>=85?'#22d3ee':data.auditScore>=75?'#facc15':data.auditScore>=50?'#fb923c':'#f87171';
+  html+='<div style="position:absolute;top:12px;right:16px;font-size:3.2em;line-height:1;filter:drop-shadow(0 0 12px '+emojiGlow+');cursor:default" title="คะแนน '+data.auditScore+'/100">'+scoreEmoji+'</div>';
   html+='<h2>📊 สรุปผลการตรวจสอบรายงาน — '+escHtml(data.deptName)+'</h2>';
   var gradeColors={Excellent:'#4ade80',Good:'#22d3ee',Pass:'#facc15',Poor:'#fb923c','Very Poor':'#f87171'};
   var scoreColor=gradeColors[data.grade]||'#f87171';
@@ -11466,7 +11484,7 @@ function showReviewReport(data){
   html+='<span style="color:#f87171">📝 F ฟอร์มไม่ครบ: <b>-'+data.formPenalty+'</b></span>';
   html+='</div>';
   html+='<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.15);font-size:.78em;color:rgba(255,255,255,.45)">';
-  html+='<b>สูตร:</b> X = A + B − C − I + NC − F &nbsp;|&nbsp; C=ข้อปรับ×0.20 &nbsp;|&nbsp; I=ภาษาไม่ทางการ×5 &nbsp;|&nbsp; NC=NC×5 (สูงสุด20) &nbsp;|&nbsp; F=ฟอร์มไม่ครบ';
+  html+='<b>สูตร:</b> X = A + B − C − I + NC − F &nbsp;|&nbsp; B,C: 1-40ข้อ×0.25, 41-80ข้อ×0.5, 81+=เต็ม40 &nbsp;|&nbsp; I=ภาษาไม่ทางการ×5 &nbsp;|&nbsp; NC=ขั้นบันได(5-20) &nbsp;|&nbsp; F=ฟอร์มไม่ครบ';
   html+='</div></div>';
   html+='<div class="stats">';
   html+='<div class="stat"><b>'+data.issues.length+'</b>ฟอร์มไม่ครบ</div>';
@@ -11505,7 +11523,8 @@ function showReviewReport(data){
     html+='<div class="review-section">';
     html+='<div class="review-section-hdr">❌ ข้อที่ยังไม่สมบูรณ์ <span class="badge badge-err">'+data.findingIssues.length+' ข้อ</span></div>';
     data.findingIssues.forEach(function(iss){
-      html+='<div class="review-item"><span class="q-num">ข้อ '+iss.n+':</span> <span class="issue">'+escHtml(iss.msg)+'</span></div>';
+      var ja=' onclick="jumpToRow(\''+String(iss.n).replace(/'/g,"\\'")+'\')" ';
+      html+='<div class="review-item clickable"'+ja+'><span class="q-num">ข้อ '+iss.n+':</span> <span class="issue">'+escHtml(iss.msg)+'</span></div>';
     });
     html+='</div>';
   }
@@ -11515,10 +11534,11 @@ function showReviewReport(data){
     data.qualityIssues.forEach(function(iss){
       var isInformal=iss.msg.indexOf('[INFORMAL]')===0;
       var displayMsg=isInformal?iss.msg.substring(10):iss.msg;
+      var jumpAttr=' onclick="jumpToRow(\''+String(iss.n).replace(/'/g,"\\'")+'\')" ';
       if(isInformal){
-        html+='<div class="review-item" style="background:#f8d7da;border:2px solid #dc3545;border-radius:8px;margin:6px 8px;padding:10px 14px"><span class="q-num">ข้อ '+iss.n+' ['+iss.type+']:</span> <span style="color:#721c24;font-weight:700">⛔ '+escHtml(displayMsg)+' <span style="color:#dc3545">(−5 คะแนน)</span></span></div>';
+        html+='<div class="review-item clickable" style="background:#f8d7da;border:2px solid #dc3545;border-radius:8px;margin:6px 8px;padding:10px 14px"'+jumpAttr+'><span class="q-num">ข้อ '+iss.n+' ['+iss.type+']:</span> <span style="color:#721c24;font-weight:700">⛔ '+escHtml(displayMsg)+' <span style="color:#dc3545">(−5 คะแนน)</span></span></div>';
       }else{
-        html+='<div class="review-item"><span class="q-num">ข้อ '+iss.n+' ['+iss.type+']:</span> <span class="suggestion">'+escHtml(displayMsg)+'</span></div>';
+        html+='<div class="review-item clickable"'+jumpAttr+'><span class="q-num">ข้อ '+iss.n+' ['+iss.type+']:</span> <span class="suggestion">'+escHtml(displayMsg)+'</span></div>';
       }
     });
     html+='</div>';
@@ -11564,13 +11584,28 @@ function printReviewReport(){
   }
   var w=window.open('','_blank');
   w.document.write('<html><head><title>Lead Auditor Review Report</title>');
-  w.document.write('<style>body{font-family:Arial,sans-serif;padding:20px;color:#333}h2{color:#1B6B93}.review-section{margin:16px 0;border:1px solid #e2e8f0;border-radius:8px;padding:12px}.review-section-hdr{font-weight:700;font-size:1em;padding-bottom:8px;border-bottom:1px solid #e2e8f0;margin-bottom:8px}.review-item{padding:6px 0;border-bottom:1px solid #f1f5f9}.review-summary{margin-bottom:20px}.score-bar{height:8px;background:#e2e8f0;border-radius:4px;margin:4px 0 8px}.score-fill{height:100%;border-radius:4px}.stats{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}.stat{text-align:center;padding:8px 12px;background:#f8f9fa;border-radius:6px}.badge{padding:2px 8px;border-radius:10px;font-size:.8em;color:#fff}.badge-err{background:#dc3545}.badge-warn{background:#ffc107;color:#333}.badge-ok{background:#28a745}.review-status{padding:10px;border-radius:8px;font-weight:700;margin:8px 0}.review-status.pass{background:#d4edda;color:#155724}.review-status.warn{background:#fff3cd;color:#856404}.review-status.fail{background:#f8d7da;color:#721c24}.issue{color:#dc3545}.suggestion{color:#856404}.good{color:#28a745}.q-num{font-weight:700;color:#1B6B93}ul{padding-left:20px}@media print{body{padding:0}}</style>');
+  w.document.write('<style>body{font-family:Arial,sans-serif;padding:20px;color:#333}h2{color:#1B6B93}.review-section{margin:16px 0;border:1px solid #e2e8f0;border-radius:8px;padding:12px}.review-section-hdr{font-weight:700;font-size:1em;padding-bottom:8px;border-bottom:1px solid #e2e8f0;margin-bottom:8px}.review-item{padding:6px 0;border-bottom:1px solid #f1f5f9}.review-summary{margin-bottom:20px}.score-bar{height:8px;background:#e2e8f0;border-radius:4px;margin:4px 0 8px}.score-fill{height:100%;border-radius:4px}.stats{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}.stat{text-align:center;padding:8px 12px;background:#f8f9fa;border-radius:6px}.badge{padding:2px 8px;border-radius:10px;font-size:.8em;color:#fff}.badge-err{background:#dc3545}.badge-warn{background:#ffc107;color:#333}.badge-ok{background:#28a745}.review-status{padding:10px;border-radius:8px;font-weight:700;margin:8px 0}.review-status.pass{background:#d4edda;color:#155724}.review-status.warn{background:#fff3cd;color:#856404}.review-status.fail{background:#f8d7da;color:#721c24}.issue{color:#dc3545}.suggestion{color:#856404}.good{color:#28a745}.q-num{font-weight:700;color:#1B6B93}ul{padding-left:20px}@media print{body{padding:0}.print-doc-footer{display:block !important;position:fixed;bottom:6px;right:10px;font-size:7pt;color:#888;font-family:Arial,sans-serif}}</style>');
   w.document.write('</head><body>');
   w.document.write(container.innerHTML);
+  w.document.write('<div class="print-doc-footer" style="display:none">ML-FM-1620-007: 01/02/2014: Rev.03</div>');
   w.document.write('</body></html>');
   w.document.close();
   w.focus();
   setTimeout(function(){w.print();},300);
+}
+function jumpToRow(qn){
+  closeReview();
+  setTimeout(function(){
+    var row=document.querySelector('tr[data-qn="'+qn+'"]');
+    if(!row){showToast('ไม่พบข้อ '+qn);return;}
+    row.scrollIntoView({behavior:'smooth',block:'center'});
+    row.classList.remove('row-flash');
+    void row.offsetWidth;
+    row.classList.add('row-flash');
+    setTimeout(function(){row.classList.remove('row-flash');},4000);
+    var ta=row.querySelector('textarea');
+    if(ta)setTimeout(function(){ta.focus();},800);
+  },150);
 }
 function closeReview(){
   var overlay=document.getElementById('reviewOverlay');
@@ -11648,6 +11683,8 @@ function closePrintPreview(){
 <div id="photoPrintSection" class="card" style="margin-top:18px"><div class="photo-print-section-title">รวมหลักฐานภาพถ่าย</div><div id="photoPrintContent"></div></div>
 <div id="photoModalOverlay" class="photo-modal-overlay" style="display:none" onclick="closePhotoModal(event)"><div class="photo-modal" onclick="event.stopPropagation()"><h3>&#xe40;&#xe1e;&#xe34;&#xe48;&#xe21;&#xe20;&#xe32;&#xe1e;&#xe16;&#xe48;&#xe32;&#xe22;</h3><div class="photo-modal-btns"><button class="photo-modal-btn photo-modal-btn-camera" onclick="triggerPhotoInput(true)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>&#xe16;&#xe48;&#xe32;&#xe22;&#xe20;&#xe32;&#xe1e;</button><button class="photo-modal-btn photo-modal-btn-file" onclick="triggerPhotoInput(false)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>&#xe40;&#xe25;&#xe37;&#xe2d;&#xe01;&#xe08;&#xe32;&#xe01;&#xe2d;&#xe38;&#xe1b;&#xe01;&#xe23;&#xe13;&#xe4c;</button></div><button class="photo-modal-cancel" onclick="closePhotoModal()">&#xe22;&#xe01;&#xe40;&#xe25;&#xe34;&#xe01;</button></div><input type="file" id="photoCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoInput(this)"><input type="file" id="photoFileInput" accept="image/*" style="display:none" onchange="handlePhotoInput(this)"></div>
 
+<div class="print-doc-footer" style="display:none">ML-FM-1620-007: 01/02/2014: Rev.03</div>
+<button id="scrollBottomBtn" class="scroll-bottom-btn" onclick="scrollToBottom()" title="ไปส่งรายงาน ⬇" aria-label="ไปส่งรายงาน">⬇</button>
 <button id="scrollTopBtn" class="scroll-top-btn" onclick="scrollToTop()" title="กลับขึ้นบนสุด" aria-label="กลับขึ้นบนสุด">&#x2B06;</button>
 <div class="manual-overlay" id="manualOverlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
   <div class="manual-popup">
