@@ -558,8 +558,8 @@ tr.row-flash>td{animation:rowFlash 1.8s ease 2;-webkit-print-color-adjust:exact}
         <button class="btn-change-dept" onclick="changeDept()">&#xe40;&#xe1b;&#xe25;&#xe35;&#xe48;&#xe22;&#xe19;&#xe41;&#xe1c;&#xe19;&#xe01;</button>
       </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1.5"><label>ผู้รับการตรวจ (Auditee) <button type="button" class="btn-add-auditee" onclick="addAuditee()" title="เพิ่มผู้รับการตรวจ">+</button></label><div id="auditeeContainer"><div class="auditee-row"><input type="text" class="fAuditee" placeholder="ชื่อผู้รับการตรวจ" oninput="autoSave()"></div></div></div>
-        <div class="form-group"><label>ผู้ตรวจ (Auditor)</label><input type="text" id="fAuditor" placeholder="ชื่อผู้ตรวจ" oninput="autoSave()"></div>
+        <div class="form-group" style="flex:1.5"><label>ผู้รับการตรวจ (Auditee) <button type="button" class="btn-add-auditee" onclick="addAuditee()" title="เพิ่มผู้รับการตรวจ">+</button></label><div id="auditeeContainer"><div class="auditee-row"><input type="text" class="fAuditee" placeholder="ชื่อผู้รับการตรวจ" oninput="autoSave();syncSignatureNames()"></div></div></div>
+        <div class="form-group"><label>ผู้ตรวจ (Auditor)</label><input type="text" id="fAuditor" placeholder="ชื่อผู้ตรวจ" oninput="autoSave();syncSignatureNames()"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>&#xe27;&#xe31;&#xe19;&#xe17;&#xe35;&#xe48;&#xe15;&#xe23;&#xe27;&#xe08;</label><input type="date" id="fDate" oninput="autoSave()"></div>
@@ -609,7 +609,7 @@ tr.row-flash>td{animation:rowFlash 1.8s ease 2;-webkit-print-color-adjust:exact}
             <canvas class="sig-canvas" id="sigAuditee" width="400" height="100"></canvas>
             <button class="sig-clear-btn" onclick="clearSig('sigAuditee')">&#xe25;&#xe49;&#xe32;&#xe07;</button>
           </div>
-          <input type="text" id="sigAuditeeName" class="sig-name-input" placeholder="&#xe0a;&#xe37;&#xe48;&#xe2d;-&#xe19;&#xe32;&#xe21;&#xe2a;&#xe01;&#xe38;&#xe25;">
+          <input type="text" id="sigAuditeeName" class="sig-name-input" placeholder="&#xe0a;&#xe37;&#xe48;&#xe2d;-&#xe19;&#xe32;&#xe21;&#xe2a;&#xe01;&#xe38;&#xe25;" readonly style="background:#f0f0f0;cursor:default">
         </div>
         <div class="sig-block">
           <label>&#xe1c;&#xe39;&#xe49;&#xe15;&#xe23;&#xe27;&#xe08; (Auditor)</label>
@@ -617,7 +617,7 @@ tr.row-flash>td{animation:rowFlash 1.8s ease 2;-webkit-print-color-adjust:exact}
             <canvas class="sig-canvas" id="sigAuditor" width="400" height="100"></canvas>
             <button class="sig-clear-btn" onclick="clearSig('sigAuditor')">&#xe25;&#xe49;&#xe32;&#xe07;</button>
           </div>
-          <input type="text" id="sigAuditorName" class="sig-name-input" placeholder="&#xe0a;&#xe37;&#xe48;&#xe2d;-&#xe19;&#xe32;&#xe21;&#xe2a;&#xe01;&#xe38;&#xe25;">
+          <input type="text" id="sigAuditorName" class="sig-name-input" placeholder="&#xe0a;&#xe37;&#xe48;&#xe2d;-&#xe19;&#xe32;&#xe21;&#xe2a;&#xe01;&#xe38;&#xe25;" readonly style="background:#f0f0f0;cursor:default">
         </div>
       </div>
       <div class="legend">
@@ -10066,15 +10066,20 @@ function changeDept(){
 function addAuditee(){
   var c=document.getElementById('auditeeContainer');
   var row=document.createElement('div');row.className='auditee-row';
-  row.innerHTML='<input type="text" class="fAuditee" placeholder="ชื่อผู้รับการตรวจ" oninput="autoSave()"><button type="button" class="btn-remove-auditee" onclick="removeAuditee(this)" title="ลบ">&times;</button>';
+  row.innerHTML='<input type="text" class="fAuditee" placeholder="ชื่อผู้รับการตรวจ" oninput="autoSave();syncSignatureNames()"><button type="button" class="btn-remove-auditee" onclick="removeAuditee(this)" title="ลบ">&times;</button>';
   c.appendChild(row);autoSave();
 }
 function removeAuditee(btn){
-  var row=btn.parentElement;row.remove();autoSave();
+  var row=btn.parentElement;row.remove();autoSave();syncSignatureNames();
 }
 function getAuditeeValues(){
   var inputs=document.getElementById('auditeeContainer').querySelectorAll('.fAuditee');
   var vals=[];inputs.forEach(function(inp){vals.push(inp.value);});return vals;
+}
+function syncSignatureNames(){
+  var auditeeNames=getAuditeeValues().filter(function(v){return v.trim();}).join(', ');
+  document.getElementById('sigAuditeeName').value=auditeeNames;
+  document.getElementById('sigAuditorName').value=document.getElementById('fAuditor').value;
 }
 function setAuditeeValues(arr){
   var c=document.getElementById('auditeeContainer');
@@ -10083,17 +10088,17 @@ function setAuditeeValues(arr){
   arr.forEach(function(v,i){
     var row=document.createElement('div');row.className='auditee-row';
     var removeBtn=i>0?'<button type="button" class="btn-remove-auditee" onclick="removeAuditee(this)" title="ลบ">&times;</button>':'';
-    row.innerHTML='<input type="text" class="fAuditee" placeholder="ชื่อผู้รับการตรวจ" oninput="autoSave()">'+removeBtn;
+    row.innerHTML='<input type="text" class="fAuditee" placeholder="ชื่อผู้รับการตรวจ" oninput="autoSave();syncSignatureNames()">'+removeBtn;
     row.querySelector('.fAuditee').value=v;
     c.appendChild(row);
   });
 }
 function clearFormFields(){
   setAuditeeValues(['']);
-  ['fAuditor','fDate','fRound','sigAuditeeName','sigAuditorName'].forEach(function(id){
+  ['fAuditor','fDate','fRound'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.value='';
   });
-  clearSig('sigAuditee');clearSig('sigAuditor');
+  clearSig('sigAuditee');clearSig('sigAuditor');syncSignatureNames();
 }
 function escHtml(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
 function renderTable(){
@@ -10664,8 +10669,7 @@ function restoreState(state){
     document.getElementById('fAuditor').value=state.auditor||'';
     document.getElementById('fDate').value=state.date||'';
     document.getElementById('fRound').value=state.round||'';
-    document.getElementById('sigAuditeeName').value=state.sigAuditeeName||'';
-    document.getElementById('sigAuditorName').value=state.sigAuditorName||'';
+    syncSignatureNames();
     if(state.sigAuditeeData)restoreSig('sigAuditee',state.sigAuditeeData);
     if(state.sigAuditorData)restoreSig('sigAuditor',state.sigAuditorData);
   },120);
