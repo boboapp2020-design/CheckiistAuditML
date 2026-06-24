@@ -211,6 +211,10 @@ td textarea{min-height:34px;max-height:100px}
 }
 .clause-tag .tag-x{cursor:pointer;font-size:.85em;opacity:.55;line-height:1;margin-left:1px}
 .clause-tag .tag-x:hover{opacity:1;color:var(--red)}
+.gh-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.gh-tag,.hc-tag{display:inline-flex;align-items:center;border-radius:9px;padding:1px 7px;font-size:.7em;font-weight:700;line-height:1.35;cursor:help;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.gh-tag{background:#e6f4ea;border:1px solid #34a853;color:#1e7e34}
+.hc-tag{background:#e8f0fe;border:1px solid #4285f4;color:#1558d6}
 .clause-add-row{display:flex;gap:4px;margin-top:4px;align-items:center}
 .clause-add-select{
   flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:5px;
@@ -10175,6 +10179,56 @@ function makeRow(q,idx,isNew){
   renderPhotoCell(td9,qKey);tr.appendChild(td9);
   return tr;
 }
+// ===== GHPs / HACCP mapping (derived from clause text) =====
+// GHPs  ← ISO/TS 22002-1 (PRP technical spec, aligns with Codex GHP CXC 1-1969)
+// HACCP ← ISO 22000 clause 8.5–8.9 (hazard control). Other ISO 22000 clauses
+//         (4–7, 9, 10) are FSMS management, not HACCP principles → left blank.
+var GHP_SECTIONS={
+  3:{s:'GHP §3 อาคาร/เครื่องมือ',f:'GHP มาตรา 3: การออกแบบสถานประกอบการและเครื่องมือ'},
+  4:{s:'GHP §4 ฝึกอบรม',f:'GHP มาตรา 4: การฝึกอบรมและความสามารถ'},
+  5:{s:'GHP §5 ทำความสะอาด/สัตว์พาหะ',f:'GHP มาตรา 5: การบำรุงรักษา ทำความสะอาด ฆ่าเชื้อ และควบคุมสัตว์พาหะ'},
+  6:{s:'GHP §6 สุขลักษณะบุคคล',f:'GHP มาตรา 6: สุขลักษณะส่วนบุคคล'},
+  7:{s:'GHP §7 ควบคุมปฏิบัติงาน',f:'GHP มาตรา 7: การควบคุมการปฏิบัติงาน'},
+  8:{s:'GHP §8 ข้อมูลผลิตภัณฑ์',f:'GHP มาตรา 8: ข้อมูลผลิตภัณฑ์และการสร้างความเข้าใจผู้บริโภค'}
+};
+var TS_TO_GHP={4:3,5:3,6:3,7:5,8:5,9:7,10:7,11:5,12:5,13:6,14:7,15:7,16:7,17:8};
+function haccpForClause(num){
+  if(num.indexOf('8.5.1')===0)return{s:'HACCP ขั้นเตรียม (Step 1-5)',f:'HACCP ขั้นเตรียมการ — รวบรวมข้อมูลวัตถุดิบ/ผลิตภัณฑ์/วัตถุประสงค์การใช้/แผนผังกระบวนการ (ISO 22000: 8.5.1)'};
+  if(num.indexOf('8.5.2')===0)return{s:'HACCP P1 วิเคราะห์อันตราย',f:'HACCP หลักการ 1: การวิเคราะห์อันตราย (ISO 22000: 8.5.2)'};
+  if(num.indexOf('8.5.3')===0)return{s:'HACCP Validation',f:'HACCP: การพิสูจน์ความถูกต้องของมาตรการควบคุม (Validation) (ISO 22000: 8.5.3)'};
+  if(num.indexOf('8.5.4')===0)return{s:'HACCP P2-5 CCP/เฝ้าระวัง/แก้ไข',f:'HACCP หลักการ 2-5: กำหนด CCP/OPRP, ค่าวิกฤต, การเฝ้าระวัง, การแก้ไข (แผนควบคุมอันตราย ISO 22000: 8.5.4)'};
+  if(num.indexOf('8.5')===0)return{s:'HACCP แผนควบคุมอันตราย',f:'HACCP: แผนควบคุมอันตราย (ISO 22000: 8.5)'};
+  if(num.indexOf('8.6')===0)return{s:'HACCP ปรับปรุงแผน',f:'HACCP: การปรับปรุงข้อมูล PRP และแผนควบคุมอันตราย (ISO 22000: 8.6)'};
+  if(num.indexOf('8.7')===0)return{s:'HACCP P4 เฝ้าระวัง/สอบเทียบ',f:'HACCP หลักการ 4: การควบคุมการเฝ้าระวังและการวัด/สอบเทียบ (ISO 22000: 8.7)'};
+  if(num.indexOf('8.8')===0)return{s:'HACCP P6 ทวนสอบ',f:'HACCP หลักการ 6: การทวนสอบ (Verification) (ISO 22000: 8.8)'};
+  if(num.indexOf('8.9')===0)return{s:'HACCP P5 การแก้ไข/NC',f:'HACCP หลักการ 5: การแก้ไข & การจัดการผลิตภัณฑ์ที่อาจไม่ปลอดภัย (ISO 22000: 8.9)'};
+  return null;
+}
+function deriveGhpHaccp(clauseText){
+  var text=Array.isArray(clauseText)?clauseText.join(' / '):(clauseText||'');
+  var ghp=[],haccp=[],seenG={},seenH={},m;
+  var re1=/ISO\/TS\s*22002-1:\s*([0-9]+)/g;
+  while((m=re1.exec(text))){
+    var sec=parseInt(m[1],10);
+    if(sec===18){if(!seenG.fd){seenG.fd=1;ghp.push({s:'Food Defense (นอกเหนือ GHP)',f:'การป้องกันการก่อการร้ายทางอาหาร (ISO/TS 22002-1 ข้อ 18) — นอกขอบเขต GHP'});}continue;}
+    var g=TS_TO_GHP[sec];
+    if(g&&!seenG[g]){seenG[g]=1;ghp.push({s:GHP_SECTIONS[g].s,f:GHP_SECTIONS[g].f+' (ISO/TS 22002-1 ข้อ '+sec+')'});}
+  }
+  var re2=/ISO\s*22000:\s*([0-9]+(?:\.[0-9]+)*)/g;
+  while((m=re2.exec(text))){
+    var lab=haccpForClause(m[1]);
+    if(lab&&!seenH[lab.s]){seenH[lab.s]=1;haccp.push(lab);}
+  }
+  return{ghp:ghp,haccp:haccp};
+}
+function appendGhpHaccpTags(container,clauseText){
+  var d=deriveGhpHaccp(clauseText);
+  if(d.ghp.length===0&&d.haccp.length===0)return;
+  var box=document.createElement('div');box.className='gh-tags';
+  d.ghp.forEach(function(t){var s=document.createElement('span');s.className='gh-tag';s.textContent=t.s;s.title=t.f;box.appendChild(s);});
+  d.haccp.forEach(function(t){var s=document.createElement('span');s.className='hc-tag';s.textContent=t.s;s.title=t.f;box.appendChild(s);});
+  container.appendChild(box);
+}
 function renderClauseView(td,q,idx){
   td.innerHTML='';
   var wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;gap:3px';
@@ -10189,6 +10243,7 @@ function renderClauseView(td,q,idx){
     wrap.appendChild(editBtn);
   }
   td.appendChild(wrap);
+  appendGhpHaccpTags(td,q.c);
 }
 function renderClauseEdit(td,q,idx){
   td.innerHTML='';
@@ -10235,6 +10290,7 @@ function renderClauseTags(cell,clauseArr){
     tag.appendChild(tn);tag.appendChild(xs);wrap.appendChild(tag);
   });
   cell.appendChild(wrap);
+  appendGhpHaccpTags(cell,clauseArr);
   var ar=document.createElement('div');ar.className='clause-add-row';
   var sel=document.createElement('select');sel.className='clause-add-select';
   var def=document.createElement('option');def.value='';def.textContent='-- เลือก clause --';sel.appendChild(def);
@@ -10762,6 +10818,112 @@ function doPrint(){
   if(titleEl){titleEl.innerHTML=origTitle;}
   if(badge){badge.remove();document.getElementById('printScoreStyle').remove();}
 }
+// ===== Lead-Auditor 4-Layer Evaluation Engine =====
+// Implements the spec in /Gemini (gemini-code-1782218022446.txt + ...208249.txt):
+//   4 scores (0-5): objective_evidence, requirement_link, writing_quality, auditor_logic
+//   verdict: Perfect | Acceptable | Faulty ; is_savable (Faulty=false)
+//   + coaching_feedback + suggested_sentence (copy-ready)
+// CORE RULE (208249.txt): short-but-correct lines ("ไม่มีนโยบาย" for NC,
+//   "ไม่พบสิ่งผิดปกติ" for C) = logic 100%, NEVER penalize. Offline/deterministic.
+function evaluateAuditSentence(status,text,ctx){
+  ctx=ctx||{};
+  var s=(text||'').trim();
+  var blank={verdict:'Faulty',grade:'Faulty',is_savable:false,message:'❌ กรุณากรอกข้อมูล',
+    coaching:'กรุณากรอกผลการตรวจ',suggested:'',
+    scores:{objective_evidence:0,requirement_link:0,writing_quality:0,auditor_logic:0,total_percentage:0}};
+  if(!s)return blank;
+  var V={
+    actions:['สุ่มตรวจ','ตรวจสอบ','เดินสำรวจ','จากการตรวจ','เรียกดู','สังเกต','สัมภาษณ์','สอบถาม','ตรวจดู','ทวนสอบ','เปิดดู','ตรวจประเมิน'],
+    evidences:['บันทึก','รายงาน','เอกสาร','SOP','WI','หลักฐาน','ใบรับรอง','ทะเบียน','แบบฟอร์ม','คู่มือ','นโยบาย','ระเบียบ','โปรแกรม','record','log','checklist','อุณหภูมิ','สอบเทียบ','calibration'],
+    places:['ไลน์ผลิต','ไลน์','แผนก','พื้นที่','จุด','กะ','สถานี','โซน','คลัง','ห้อง','line','area','บริเวณ'],
+    positives:['สอดคล้อง','ถูกต้อง','ตามเกณฑ์','เรียบร้อย','ครบถ้วน','ปฏิบัติได้','เป็นไปตาม','ผ่านเกณฑ์','ปกติ','ปลอดภัย','ควบคุมได้','ผ่าน'],
+    praise:['ดีมาก','สมบูรณ์แบบ','ไม่มีที่ติ','ทุกประการ','ยอดเยี่ยม','ดีเยี่ยม','เป็นเลิศ','สมบูรณ์'],
+    negations:['ไม่พบ','ไม่เจอ','ไม่มี'],
+    goodThings:['เอกสาร','นโยบาย','หลักฐาน','บันทึก','แบบฟอร์ม','ระเบียบ','ขั้นตอน','คู่มือ','แผน','โปรแกรม','ใบรับรอง','รายงาน','ทะเบียน','มาตรฐาน','ระบบ','เครื่องมือ','อุปกรณ์'],
+    badThings:['สิ่งผิดปกติ','ความปนเปื้อน','การปนเปื้อน','สิ่งปนเปื้อน','ข้อบกพร่อง','สิ่งเจือปน','สิ่งแปลกปลอม','ขยะ','ความเสียหาย','ความผิดปกติ','ปัญหา','สนิม','เชื้อรา','แมลง','สัตว์พาหะ','คราบ','สิ่งสกปรก'],
+    deficiency:['ขาด','ชำรุด','เสียหาย','ไม่เข้าใจ','เกินเกณฑ์','ไม่ได้ปฏิบัติ','ไม่ครบ','ไม่ถูกต้อง','หมดอายุ','ไม่สอดคล้อง','บกพร่อง','ไม่เป็นไปตาม','สูญหาย','พัง','ละเลย','ไม่สวม','ไม่ได้ทำ','ล้มเหลว','หาย','ไม่สามารถ','ไม่ได้','ไม่เพียงพอ','ไม่ตรง','ไม่ผ่าน','ไม่ครอบคลุม','ไม่เหมาะสม','ไม่ทัน','ไม่ปลอดภัย','ไม่เป็นปัจจุบัน'],
+    recommend:['ควร','แนะนำ','เสนอ','พิจารณา','เพื่อป้องกัน','แนวโน้ม','ป้องกัน','น่าจะ','อาจ','เพิ่มความถี่','ปริ่ม'],
+    stdRefs:['ISO','FSSC','GHP','HACCP','GMP','PRP','OPRP','CCP','allergen','สารก่อภูมิแพ้','ข้อกำหนด','clause','มาตรฐาน','19011','22000','9001','22002']
+  };
+  var has=function(g){return g.some(function(w){return s.indexOf(w)>=0;});};
+  var negGoodRe=new RegExp('(ไม่พบ|ไม่เจอ|ไม่มี)\\s*(?:การ[ก-๙]{2,15}|'+V.goodThings.join('|')+')');
+  var negBadRe=new RegExp('(ไม่พบ|ไม่เจอ|ไม่มี)\\s*(?:'+V.badThings.join('|')+')');
+  var posBadRe=new RegExp('(พบ|เจอ|มี|ตรวจพบ|สังเกตพบ)\\s*(?:'+V.badThings.join('|')+')');
+  var broadNegRe=/ไม่(ได้|สามารถ|มี|พบ|เจอ|ครบ|ถูก|เป็น|ตรง|ผ่าน|เพียงพอ|ครอบคลุม|เหมาะ|ทัน|ปลอดภัย|เคย|ระบุ|กำหนด|ชัดเจน)/;
+  var defc=has(V.deficiency)||negGoodRe.test(s)||posBadRe.test(s)||broadNegRe.test(s);
+  var conf=negBadRe.test(s)||(has(V.positives)&&!defc);
+  var praise=has(V.praise)||(has(V.positives)&&/ทุกประการ|ทุกอย่าง/.test(s)&&!defc);
+  // ----- Layer 4a: auditor_logic_score (semantic direction vs status) -----
+  var logic;
+  if(status==='C'){
+    if(defc&&!conf)logic=0;
+    else if(conf||(has(V.negations)&&!defc))logic=5;
+    else logic=3;
+  }else if(status==='NC'){
+    if(praise&&!defc)logic=0;
+    else if(defc||has(V.negations))logic=5;
+    else if(has(V.positives)&&!defc)logic=1;
+    else logic=3;
+  }else{ // B / OFI
+    if(has(V.recommend))logic=5;
+    else if(praise)logic=1;
+    else if(defc)logic=2;
+    else logic=3;
+  }
+  // ----- Layer 1: objective_evidence_score -----
+  var ev=0;
+  if(has(V.actions))ev++;
+  if(has(V.evidences))ev++;
+  if(has(V.places))ev++;
+  if(/\d/.test(s))ev++;
+  if(/[A-Z]{2,}|Rev|No\.|เลขที่|ฉบับ|หมายเลข/.test(s))ev++;
+  ev=Math.min(5,ev);
+  // ----- Layer 3: writing_quality_score (length / structure) -----
+  var L=s.length,wq;
+  if(L<6)wq=1;else if(L<35)wq=3;else if(L<70)wq=4;else wq=5;
+  if(['ผ่าน','ปกติ','ดี','โอเค','ok','OK','-','N/A'].indexOf(s)>=0)wq=1;
+  // ----- Layer 2: requirement_link_score -----
+  var rl=3;
+  if(has(V.stdRefs))rl++;
+  var guideTxt=((ctx.guide&&(ctx.guide.cc||'')+' '+(ctx.guide&&ctx.guide.nc||'')+' '+(ctx.guide&&ctx.guide.d||''))||'');
+  if(guideTxt.trim()){
+    var toks=s.match(/[ก-๙a-zA-Z]{4,}/g)||[];
+    if(toks.some(function(t){return guideTxt.indexOf(t)>=0;}))rl++;
+  }
+  if(logic===0)rl=Math.min(rl,1);
+  rl=Math.max(0,Math.min(5,rl));
+  var total=Math.round((ev+rl+wq+logic)/20*100);
+  // ----- Verdict + savable (022446.txt rule) -----
+  var verdict,savable;
+  // B/OFI: evidence (records) is less relevant — a neutral recommendation with a
+  // prevention/risk rationale is a "perfect" observation.
+  var strongB=status==='B'&&logic>=4&&L>=20&&/ป้องกัน|ความเสี่ยง|แนวโน้ม|เพื่อ/.test(s);
+  if(logic<3){verdict='Faulty';savable=false;}
+  else if((logic>=4&&total>=70&&ev>=2&&wq>=4)||strongB){verdict='Perfect';savable=true;}
+  else{verdict='Acceptable';savable=true;}
+  // ----- Coaching + suggested sentence -----
+  var clauseHint='';
+  if(ctx.clause){var cc=(Array.isArray(ctx.clause)?ctx.clause.join(' / '):String(ctx.clause)).trim();if(cc)clauseHint=' ('+cc.substring(0,48)+')';}
+  var coaching='',suggested='';
+  if(verdict==='Perfect'){
+    coaching='รายงานยอดเยี่ยมตามมาตรฐานสากลแล้วครับ';
+  }else if(verdict==='Faulty'){
+    if(status==='C')coaching='สถานะไม่ตรงกับเนื้อหา: เลือก C (สอดคล้อง) แต่เนื้อหาเป็นเชิงลบ — ควรเปลี่ยนสถานะเป็น NC หรือแก้เนื้อหาให้เป็นเชิงบวก';
+    else if(status==='NC')coaching='สถานะไม่ตรงกับเนื้อหา: เลือก NC (ไม่สอดคล้อง) แต่เนื้อหาเป็นเชิงบวก — ควรเปลี่ยนสถานะเป็น C หรือแก้เนื้อหาให้ชี้ข้อบกพร่อง';
+    else coaching='สถานะไม่ตรงกับเนื้อหา: ข้อสังเกต (B) ควรเป็นกลางหรือเชิงป้องกัน — ไม่ควรเป็นเชิงบวกจนเป็น C หรือเชิงลบจนเป็น NC';
+  }else{
+    if(status==='C'){coaching='บันทึกได้ครับ ตรรกะถูกต้อง — จะโปรขึ้นหากระบุวิธีทวนสอบ (สุ่มตรวจบันทึก/เดินสำรวจ) และจุดที่ตรวจ';suggested='จากการสุ่มตรวจบันทึกและเดินสำรวจหน้างาน '+s+' ซึ่งเป็นไปตามเกณฑ์'+clauseHint;}
+    else if(status==='NC'){coaching='บันทึกได้ครับ ตรรกะถูกต้อง — แนะนำให้ระบุพื้นที่/แผนก หลักฐานเชิงประจักษ์ และข้อกำหนดที่ขัดแย้ง';suggested=s+' ซึ่งไม่สอดคล้องกับข้อกำหนด'+clauseHint+' (ควรระบุพื้นที่/แผนกและหลักฐานเพิ่มเติม)';}
+    else{coaching='บันทึกได้ครับ — ข้อสังเกตจะสมบูรณ์ขึ้นหากเพิ่มเหตุผลเชิงป้องกันความเสี่ยง';suggested='ควรพิจารณา '+s+' เพื่อป้องกันความเสี่ยงในอนาคต';}
+  }
+  var emoji=verdict==='Perfect'?'🟢':verdict==='Faulty'?'❌':'🟡';
+  return{
+    verdict:verdict,grade:verdict,is_savable:savable,
+    message:emoji+' '+coaching,
+    coaching:coaching,suggested:suggested,
+    scores:{objective_evidence:ev,requirement_link:rl,writing_quality:wq,auditor_logic:logic,total_percentage:total}
+  };
+}
 function doAuditReview(){
   var dept=DEPT_DATA[currentDeptIdx];
   if(!dept){alert('กรุณาเลือกแผนกก่อน');return;}
@@ -10778,6 +10940,7 @@ function doAuditReview(){
   var findingIssues=[];
   var qualityIssues=[];
   var qualityGoods=[];
+  var writingSuggestions=[];
   dept.questions.forEach(function(q,idx){
     var finding=q._result||'';
     var remark=q._remark||'';
@@ -10802,7 +10965,7 @@ function doAuditReview(){
     var trimmed=finding.trim();
     // --- Lead Auditor: Deep content review using guideline criteria ---
     // A) Generic / too short
-    var genericTerms=['ผ่าน','ok','OK','Ok','สอดคล้อง','ปกติ','ดี','ครบ','มี','ทำแล้ว','ได้','เรียบร้อย','ไม่มี','ไม่พบ','ไม่ได้','N/A','-'];
+    var genericTerms=['ผ่าน','ok','OK','Ok','สอดคล้อง','ปกติ','ดี','ครบ','มี','ทำแล้ว','ได้','เรียบร้อย','ไม่มี','ไม่พบ','ไม่เจอ','ไม่ได้','N/A','-'];
     if(genericTerms.indexOf(trimmed)>=0){
       var hint='';
       if(guide&&guide.cc)hint=' เกณฑ์ข้อนี้: "'+guide.cc.substring(0,60)+'" — ควรระบุว่าตรวจพบสิ่งใดที่เป็นไปตามเกณฑ์นี้';
@@ -10845,75 +11008,31 @@ function doAuditReview(){
         qualityGoods.push({n:q.n,type:selType,msg:'การเขียนดี: '+goodReasons.join(', ')});
       }
     }
-    // D) C/NC tone mismatch
+    // D) Lead-Auditor 4-layer evaluation (spec in /Gemini folder)
+    //    Perfect → จุดแข็ง · Faulty → ต้องปรับปรุง · Acceptable → ข้อเสนอแนะ (ไม่บล็อก)
+    var ev=evaluateAuditSentence(selType,trimmed,{clause:q.c,guide:guide});
+    if(ev.verdict==='Perfect'){qualityGoods.push({n:q.n,type:selType,msg:ev.message,score:ev.scores.total_percentage});}
+    else if(ev.verdict==='Faulty'){qualityIssues.push({n:q.n,type:selType,msg:ev.message,score:ev.scores.total_percentage});}
+    else if(ev.suggested){writingSuggestions.push({n:q.n,type:selType,coaching:ev.coaching,suggested:ev.suggested,score:ev.scores.total_percentage});}
+    // D1) FSSC Annex2 §3: C summary must not be oversimplified (supplementary)
     if(hasC){
-      var negWords=['ไม่มี','ไม่ได้','ไม่พบ','ขาด','ยังไม่','ไม่ครบ','ไม่เป็นไปตาม','ไม่สอดคล้อง','บกพร่อง','ล้มเหลว','ไม่ถูกต้อง','ไม่ผ่าน'];
-      var negFound=negWords.filter(function(w){return trimmed.indexOf(w)>=0;});
-      var cExclusions=['ไม่พบข้อบกพร่อง','ไม่พบปัญหา','ไม่มีข้อบกพร่อง','ไม่พบสิ่งที่ไม่สอดคล้อง','ไม่พบความเบี่ยงเบน','ไม่มีปัญหา','ไม่พบข้อผิดพลาด','ไม่พบสิ่งผิดปกติ','ไม่มีสิ่งผิดปกติ','ไม่พบความบกพร่อง'];
-      var isExcluded=cExclusions.some(function(ex){return trimmed.indexOf(ex)>=0;});
-      if(negFound.length>0&&!isExcluded){
-        qualityIssues.push({n:q.n,type:'C',msg:'เลือก C (สอดคล้อง) แต่เนื้อหามีคำว่า "'+negFound.join(', ')+'" — ตรวจสอบว่าควรเป็น NC หรือไม่?'});
-      }
-      // D1) FSSC Annex2 §3 Instruction 3b: C summary must not be oversimplified
       var cVaguePhrases=['สอดคล้องตามข้อกำหนด','เป็นไปตามข้อกำหนด','ผ่านการตรวจ','ปฏิบัติได้ตามมาตรฐาน','ดำเนินการตามข้อกำหนด'];
       var isCVague=cVaguePhrases.some(function(vp){return trimmed===vp||trimmed===vp+'แล้ว';});
       if(isCVague&&trimmed.length<40){
         qualityIssues.push({n:q.n,type:'C',msg:'ผลการตรวจ C กล่าวสรุปโดยไม่มีรายละเอียด (FSSC Annex2 §3) — ต้องระบุว่าตรวจอะไร ดูหลักฐานอะไร จึงสรุปว่าสอดคล้อง เช่น ชื่อเอกสาร/บันทึก/สิ่งที่สังเกตพบ'});
       }
     }
-    if(hasNC){
-      if(trimmed.length>=10){
-        var posOnly=['สอดคล้อง','ถูกต้อง','ครบถ้วน','เป็นไปตาม','ผ่านเกณฑ์','ปฏิบัติตาม','ดำเนินการแล้ว'];
-        var posFound=posOnly.filter(function(w){return trimmed.indexOf(w)>=0;});
-        var hasNeg2=['ไม่','ขาด','ยัง','บกพร่อง'].some(function(w){return trimmed.indexOf(w)>=0;});
-        if(posFound.length>0&&!hasNeg2){
-          qualityIssues.push({n:q.n,type:'NC',msg:'เลือก NC (ไม่สอดคล้อง) แต่เนื้อหาดูเป็นบวก ("'+posFound.join(', ')+'") — ตรวจสอบว่าควรเป็น C หรือไม่?'});
-        }
-      }
-      // D2) FSSC §6.1.i: NC must have objective evidence (detailed)
-      var ncEvidenceWords=['พบว่า','ตรวจพบ','สังเกตพบ','หลักฐาน','เอกสาร','บันทึก','record','ไม่พบเอกสาร','ไม่มีบันทึก','ไม่มีหลักฐาน','ตัวอย่าง','เช่น','กรณี','ครั้งที่','วันที่'];
-      var ncHasEvidence=ncEvidenceWords.some(function(w){return trimmed.indexOf(w)>=0;});
-      var ncHasSpecifics=/\d/.test(trimmed)||/[A-Z]{2,}/.test(trimmed);
-      if(trimmed.length>=10&&!ncHasEvidence&&!ncHasSpecifics){
-        qualityIssues.push({n:q.n,type:'NC',msg:'NC ขาด Objective Evidence (FSSC §6.1.i) — ต้องระบุหลักฐานเชิงประจักษ์ เช่น เอกสารที่ตรวจ สิ่งที่สังเกตพบ ตัวเลข/วันที่/ชื่อเฉพาะ เพื่อแสดงว่าข้อกำหนดไม่ถูกปฏิบัติตามอย่างไร'});
-      }
-      var simpleNcPhrases=['ไม่พบ','ขาด','ไม่มี'];
-      var isSimpleNc=simpleNcPhrases.some(function(w){return trimmed.indexOf(w)>=0;});
-      if(!remark.trim()&&!isSimpleNc){
-        qualityIssues.push({n:q.n,type:'NC',msg:'NC ต้องมีหมายเหตุ/Remark — ระบุ Corrective Action ที่ต้องดำเนินการ พร้อมกำหนดเวลาแก้ไข'});
-      }
-      // D3) FSSC §6.2: NC Remark should contain Correction + Root Cause + CAP
-      if(remark.trim().length>=10){
-        var caStructure=0,caDetails=[];
-        var correctionWords=['แก้ไข','ดำเนินการ','ปรับปรุง','ทำการ','จัดทำ','จัดการ','ซ่อม','เปลี่ยน','ทบทวน','อบรม','สอนงาน','แก้ไขเฉพาะหน้า','correction'];
-        var rootCauseWords=['สาเหตุ','เกิดจาก','เนื่องจาก','root cause','ต้นเหตุ','ปัจจัย','เพราะ','เนื่องมาจาก'];
-        var capWords=['ป้องกัน','มาตรการ','กำหนด','ระยะเวลา','ภายใน','วัน','แผน','corrective action','CAP','ติดตาม','ตรวจซ้ำ','ทวนสอบ','verify'];
-        if(correctionWords.some(function(w){return remark.indexOf(w)>=0;})){caStructure++;caDetails.push('Correction');}
-        if(rootCauseWords.some(function(w){return remark.indexOf(w)>=0;})){caStructure++;caDetails.push('Root Cause');}
-        if(capWords.some(function(w){return remark.indexOf(w)>=0;})){caStructure++;caDetails.push('CAP');}
-        if(caStructure>=2){
-          qualityGoods.push({n:q.n,type:'NC',msg:'NC Remark มีโครงสร้างดีตาม FSSC §6.2: '+caDetails.join(' + ')});
-        }else if(caStructure===0&&remark.trim().length<30){
-          qualityIssues.push({n:q.n,type:'NC',msg:'NC Remark ควรมีโครงสร้างตาม FSSC §6.2 — ระบุ: 1) Correction (แก้ไขเฉพาะหน้า) 2) Root Cause (สาเหตุ) 3) Corrective Action Plan (แผนป้องกันการเกิดซ้ำ+กำหนดเวลา)'});
-        }
-      }
-      // D4) Reward good NC writing: detailed evidence + impact
-      if(trimmed.length>=30&&ncHasEvidence){
-        var impactWords=['ผลกระทบ','ส่งผล','เสี่ยง','อันตราย','ปนเปื้อน','ไม่ปลอดภัย','ลูกค้า','ร้องเรียน','safety','risk','impact'];
-        var ncHasImpact=impactWords.some(function(w){return trimmed.indexOf(w)>=0;});
-        if(ncHasImpact){
-          qualityGoods.push({n:q.n,type:'NC',msg:'NC เขียนได้มาตรฐาน FSSC: มี Objective Evidence + ระบุผลกระทบ'});
-        }
-      }
-    }
-    // E) B (Observe) must have suggestion
-    if(hasB&&trimmed.length>=10){
-      var suggestWords=['ควร','แนะนำ','เสนอ','ปรับปรุง','พัฒนา','เพิ่ม','ลด','พิจารณา','อาจ','น่าจะ'];
-      var hasSuggest=suggestWords.some(function(w){return trimmed.indexOf(w)>=0||remark.indexOf(w)>=0;});
-      if(!hasSuggest){
-        qualityIssues.push({n:q.n,type:'B',msg:'ข้อเสนอแนะ (Observe) ควรมีคำแนะนำที่เป็นรูปธรรม เช่น "ควร...", "แนะนำให้...", "พิจารณา..."'});
-      }else{
-        qualityGoods.push({n:q.n,type:'B',msg:'มีข้อเสนอแนะที่เป็นรูปธรรม'});
+    // D3) FSSC §6.2: reward well-structured NC Remark (Correction + Root Cause + CAP)
+    if(hasNC&&remark.trim().length>=10){
+      var caStructure=0,caDetails=[];
+      var correctionWords=['แก้ไข','ดำเนินการ','ปรับปรุง','ทำการ','จัดทำ','จัดการ','ซ่อม','เปลี่ยน','ทบทวน','อบรม','สอนงาน','แก้ไขเฉพาะหน้า','correction'];
+      var rootCauseWords=['สาเหตุ','เกิดจาก','เนื่องจาก','root cause','ต้นเหตุ','ปัจจัย','เพราะ','เนื่องมาจาก'];
+      var capWords=['ป้องกัน','มาตรการ','กำหนด','ระยะเวลา','ภายใน','วัน','แผน','corrective action','CAP','ติดตาม','ตรวจซ้ำ','ทวนสอบ','verify'];
+      if(correctionWords.some(function(w){return remark.indexOf(w)>=0;})){caStructure++;caDetails.push('Correction');}
+      if(rootCauseWords.some(function(w){return remark.indexOf(w)>=0;})){caStructure++;caDetails.push('Root Cause');}
+      if(capWords.some(function(w){return remark.indexOf(w)>=0;})){caStructure++;caDetails.push('CAP');}
+      if(caStructure>=2){
+        qualityGoods.push({n:q.n,type:'NC',msg:'NC Remark มีโครงสร้างดีตาม FSSC §6.2: '+caDetails.join(' + ')});
       }
     }
   });
@@ -10964,6 +11083,7 @@ function doAuditReview(){
     findingIssues:findingIssues,
     qualityIssues:qualityIssues,
     qualityGoods:qualityGoods,
+    writingSuggestions:writingSuggestions,
     totalQuestions:totalQuestions,
     completedCount:completedCount,
     completionPct:completionPct,
@@ -11514,6 +11634,7 @@ function showReviewReport(data){
   html+='<div class="stat"><b>'+data.findingIssues.length+'</b>ข้อที่ขาด</div>';
   html+='<div class="stat"><b style="color:#facc15">'+data.qualityIssues.length+'</b>ต้องปรับ</div>';
   html+='<div class="stat"><b style="color:#4ade80">'+data.qualityGoods.length+'</b>ข้อที่ดี</div>';
+  html+='<div class="stat"><b style="color:#fbbf24">'+((data.writingSuggestions&&data.writingSuggestions.length)||0)+'</b>ข้อเสนอแนะ</div>';
   html+='</div></div>';
   // Feedback section: strength / weakness / action_required
   html+='<div class="review-section">';
@@ -11570,7 +11691,23 @@ function showReviewReport(data){
     html+='<div class="review-section">';
     html+='<div class="review-section-hdr">✅ ข้อที่เขียนได้ดี <span class="badge badge-ok">'+data.qualityGoods.length+' ข้อ</span></div>';
     data.qualityGoods.forEach(function(g){
-      html+='<div class="review-item"><span class="q-num">ข้อ '+g.n+' ['+g.type+']:</span> <span class="good">'+escHtml(g.msg)+'</span></div>';
+      var sc=(g.score!=null)?' <span style="color:#28a745;font-size:.82em">('+g.score+'%)</span>':'';
+      html+='<div class="review-item"><span class="q-num">ข้อ '+g.n+' ['+g.type+']:</span> <span class="good">'+escHtml(g.msg)+'</span>'+sc+'</div>';
+    });
+    html+='</div>';
+  }
+  if(data.writingSuggestions&&data.writingSuggestions.length>0){
+    html+='<div class="review-section">';
+    html+='<div class="review-section-hdr">💡 ข้อเสนอแนะการเขียน (ผ่านแล้ว แต่ทำให้โปรขึ้นได้) <span class="badge" style="background:#facc15;color:#333">'+data.writingSuggestions.length+' ข้อ</span></div>';
+    data.writingSuggestions.forEach(function(w){
+      var sc=(w.score!=null)?' <span style="color:#a16207;font-size:.82em">('+w.score+'%)</span>':'';
+      var jumpAttr=' onclick="jumpToRow(\''+String(w.n).replace(/'/g,"\\'")+'\')" ';
+      html+='<div class="review-item" style="border-left:3px solid #facc15;padding-left:10px;margin:6px 8px">';
+      html+='<div class="clickable"'+jumpAttr+'><span class="q-num">ข้อ '+w.n+' ['+w.type+']:</span> <span class="suggestion">'+escHtml(w.coaching)+'</span>'+sc+'</div>';
+      html+='<div style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;background:#fffbeb;border:1px dashed #facc15;border-radius:8px;padding:8px 10px">';
+      html+='<div style="flex:1;font-size:.9em;color:#444"><b style="color:#a16207">✍️ ตัวอย่างที่แนะนำ:</b><br>'+escHtml(w.suggested)+'</div>';
+      html+='<button class="copy-suggest-btn" data-copy="'+escHtml(w.suggested).replace(/"/g,'&quot;')+'" style="flex-shrink:0;background:#1B6B93;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:.8em;cursor:pointer;font-weight:600">📋 คัดลอก</button>';
+      html+='</div></div>';
     });
     html+='</div>';
   }
@@ -11583,6 +11720,15 @@ function showReviewReport(data){
   html+='• <b>Fair Presentation (ISO 19011):</b> รายงานต้องสะท้อนข้อเท็จจริง ถูกต้อง ครบถ้วน เป็นกลาง';
   html+='</div>';
   container.innerHTML=html;
+  container.addEventListener('click',function(e){
+    var btn=e.target.closest&&e.target.closest('.copy-suggest-btn');
+    if(!btn)return;
+    e.stopPropagation();
+    var txt=btn.getAttribute('data-copy')||'';
+    var done=function(){var o=btn.textContent;btn.textContent='✓ คัดลอกแล้ว';btn.style.background='#28a745';setTimeout(function(){btn.textContent=o;btn.style.background='#1B6B93';},1500);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){done();});}
+    else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(err){}document.body.removeChild(ta);done();}
+  });
   overlay.appendChild(toolbar);
   overlay.appendChild(container);
   var scrollBtn=document.createElement('button');
