@@ -10818,13 +10818,128 @@ function doPrint(){
   if(titleEl){titleEl.innerHTML=origTitle;}
   if(badge){badge.remove();document.getElementById('printScoreStyle').remove();}
 }
-// ===== Lead-Auditor 4-Layer Evaluation Engine =====
-// Implements the spec in /Gemini (gemini-code-1782218022446.txt + ...208249.txt):
-//   4 scores (0-5): objective_evidence, requirement_link, writing_quality, auditor_logic
-//   verdict: Perfect | Acceptable | Faulty ; is_savable (Faulty=false)
-//   + coaching_feedback + suggested_sentence (copy-ready)
-// CORE RULE (208249.txt): short-but-correct lines ("ไม่มีนโยบาย" for NC,
-//   "ไม่พบสิ่งผิดปกติ" for C) = logic 100%, NEVER penalize. Offline/deterministic.
+// ===== IQA Lead-Auditor Brain (operational knowledge) =====
+// Distilled from the 4 source files in this project (data-only, not LLM):
+//   Prompt.txt ............ master C/NC/B logic + coverage 0-4 + 6 quality checks
+//   IQA_AI_Brain_v1 ....... word_pattern_analysis (scored indicators), 5-element
+//                           weighted scoring, common_mistakes, mandatory docs
+//   IQA_AI_Brain_v2 ....... C/NC/B minimum-elements rubric, decision tree DT-01..08
+//   IQA_Training_Examples . 36 calibrated good/poor samples (used to tune thresholds)
+// 5-element weights (Brain v1 step_4): evidence .30, clause .15, factual .25,
+//   completeness .20, classification .10  ->  total 0-100.
+var IQA_BRAIN={
+  // word_pattern_analysis.positive_indicators (Brain v1) — each counts once
+  positive:[
+    {re:/ตรวจพบ|ตรวจสอบพบ|เปิดดู|เรียกดู|ตรวจดู/,s:5},
+    {re:/สัมภาษณ์|สอบถาม/,s:5},
+    {re:/สังเกต(การณ์)?/,s:5},
+    {re:/สุ่มตรวจ|สุ่มสอบถาม|สุ่มสัมภาษณ์|สุ่ม\s*\d/,s:8},
+    {re:/รหัส\s*[A-Za-z]|[A-Z]{2,}[-–][A-Z0-9]/,s:5},      // document code
+    {re:/Rev\.?\s*\d|เวอร์ชัน|ฉบับที่|Rev\.\d/,s:3},
+    {re:/\d{1,2}\/\d{1,2}\/\d{2,4}|ลงวันที่|เมื่อวันที่|เมื่อ\s*\d/,s:3},
+    {re:/คุณ[ก-๙]/,s:5},                                        // named person
+    {re:/ไม่สอดคล้องกับ|ขัดแย้งกับ|ไม่เป็นไปตาม/,s:5},
+    {re:/ข้อ\s*\d+\.\d|มาตรา\s*\d/,s:5},                        // clause number
+    {re:/จำนวน\s*\d|\d+\s*(คน|จุด|ราย|รายการ|ฉบับ|ครั้ง|ตัว|กระสอบ|lot|Lot|entry)/,s:3},
+    {re:/\d+(\.\d+)?\s*%|ร้อยละ/,s:3},
+    {re:/ถ่ายภาพ|Photo\s*Ref|รูปประกอบ|ภาพประกอบ/i,s:5}
+  ],
+  // word_pattern_analysis.negative_indicators (Brain v1) + common_mistakes ERR-002
+  negative:[
+    {re:/ดูเหมือน|น่าจะ|คาดว่า|คิดว่า|เข้าใจว่า|เดาว่า|ไม่แน่ใจ|คงจะ|อาจจะ/,s:-10},
+    {re:/ไม่ได้ตรวจ|ข้ามไป|ไม่มีเวลา|ไม่ได้ดู|ไม่ได้ขอ|ไม่ได้ถาม/,s:-20},
+    {re:/เหมือนเดิม|เหมือนปีที่แล้ว|เหมือนทุกปี/,s:-10}
+  ],
+  // ERR-001/009: bare yes/no answers (EXACT match only — "ไม่มีนโยบาย" still passes)
+  yesno:['มี','ไม่มี','ผ่าน','ไม่ผ่าน','ใช่','ไม่ใช่','โอเค','ok','OK','Ok','ครบ','ดี','ดีมาก','เยี่ยม','สมบูรณ์แบบ','-','N/A','na','เรียบร้อย','ปกติ'],
+  // Brain v3 hi-risk topics (FSSC/Food Safety) — under-grading B→NC trigger
+  hiRisk:/CCP|OPRP|Metal Detector|Food Defense|TACCP|VACCP|Food Fraud|Allergen|สารก่อภูมิแพ้|สอบเทียบ|calibration|Food Grade|สารหล่อลื่น|สารเคมีสัมผัส|สุขลักษ|GHP|HACCP\s*Plan|Hazard Analysis|Mock\s*Recall|Traceability/i,
+  // v3 "shall" violation cues — "ไม่มี/ไม่ได้จัดทำ/ยังไม่ได้/ไม่มีแผน" + mandatory artifact
+  mandatoryMissing:/ไม่(มี|ได้จัดทำ|ได้ทำ|ได้กำหนด)\s*(แผน|นโยบาย|ระเบียบ|SOP|WI|HA|HACCP|FSMS|Food Defense|TACCP|VACCP|EMP|Plan|Procedure|Master List|Competency|Calibration|MRM|CAR)/i,
+  // v3 IMPROVEMENT_OPPORTUNITY pattern — positive base + "แต่/อย่างไรก็ตาม/แนะนำ/ควรเพิ่ม"
+  improvement:/(ครบ|มี|ปฏิบัติ|ดำเนินการ|ผ่าน|สอดคล้อง|ดีอยู่แล้ว)[ก-๙\sA-Za-z0-9./-]{0,120}?(แต่|อย่างไรก็ตาม|แนะนำ|ควรเพิ่ม|ควรปรับ|ควรพิจารณา|จะดีขึ้นหาก|เพื่อความมั่นใจ)/,
+  // v3 SPECULATION cues (ISO 19011 evidence-based violation)
+  speculation:/น่าจะ|คาดว่า|คิดว่า|ดูเหมือน|เข้าใจว่า|เดาว่า|คงจะ|ไม่แน่ใจ|จำไม่ได้/,
+  // v4 question_evidence_mode_classifier — ASK_FOR_RESPONSE_AWARENESS trigger phrases
+  awarenessQ:/ทราบหรือไม่|เข้าใจหรือไม่|ตระหนักหรือไม่|รู้หรือไม่|สามารถอธิบาย|อธิบายได้หรือไม่|เข้าใจวัตถุประสงค์|ทราบบทบาท|รู้ว่างานของตน|มีความเข้าใจ|รับทราบ/,
+  // v4 awareness verdict signal words (interview = valid evidence for these)
+  awPos:/อธิบายได้|ตอบได้ถูก|ตอบได้|สามารถอธิบาย|ชี้แจงได้|บอกได้ว่า|ทราบดี|เข้าใจดี|รับทราบ|ตระหนักดี/,
+  awNeg:/ตอบไม่ได้|อธิบายไม่ได้|ไม่สามารถอธิบาย|ไม่เข้าใจ|ไม่ทราบ|ไม่รู้เรื่อง|ไม่รู้|งงๆ|ตอบผิด|จำไม่ได้/,
+  awInterview:/สัมภาษณ์|สุ่มถาม|สอบถาม|ถามพนักงาน|สุ่มสัมภาษณ์|สุ่มสอบถาม|พูดคุยกับ/,
+  awIdentity:/คุณ[ก-๙]|พนักงาน|หัวหน้า|ผู้จัดการ|เจ้าหน้าที่|QC|QMR|GM|ช่าง|ตำแหน่ง|กะ\s*[A-Zก-๙]|\d+\s*คน|ผู้ปฏิบัติงาน/
+};
+// ===== v4 question_evidence_mode_classifier =====
+// ASK_FOR_RESPONSE_AWARENESS: interview answer IS the valid primary evidence (A.17/A.14a)
+// ASK_FOR_OBJECTIVE_EVIDENCE: needs documents/records — interview is only a lead (A.5)
+function classifyQuestionMode(qText){
+  if(!qText)return 'OBJECTIVE_EVIDENCE';
+  var q=String(qText);
+  if(IQA_BRAIN.awarenessQ.test(q))return 'AWARENESS';
+  // subject (person) + awareness verb anywhere in the question = awareness mode
+  // ("พนักงานเข้าใจนโยบาย...หรือไม่", "บุคลากรตระหนัก...หรือไม่")
+  if(/พนักงาน|บุคลากร|ผู้ปฏิบัติงาน|เจ้าหน้าที่|ทีมงาน/.test(q)&&/ทราบ|เข้าใจ|ตระหนัก|รู้|อธิบาย|รับทราบ/.test(q))return 'AWARENESS';
+  return 'OBJECTIVE_EVIDENCE';
+}
+// ===== v3 Coherence Engine: classify the Finding content signal =====
+// Returns one of: POSITIVE_EVIDENCE | DEVIATION_EVIDENCE | IMPROVEMENT_OPPORTUNITY
+//                | EMPTY_OR_VAGUE | RESTATES_QUESTION
+// (OFF_TOPIC requires the question text — handled at the relevance layer.)
+function classifyContentSignal(s,ctx,flags){
+  // RESTATES_QUESTION first (cheap exact-substring check)
+  if(ctx&&ctx.question){
+    var q=String(ctx.question).replace(/[\s?？]/g,'');
+    var fNorm=s.replace(/[\s?？]/g,'');
+    if(q.length>=10&&(fNorm===q||fNorm.indexOf(q)>=0||q.indexOf(fNorm)>=0))return 'RESTATES_QUESTION';
+  }
+  // EMPTY_OR_VAGUE: bare yes/no, too-short, speculation w/o evidence verb
+  if(IQA_BRAIN.yesno.indexOf(s)>=0||s.length<8)return 'EMPTY_OR_VAGUE';
+  if(IQA_BRAIN.speculation.test(s)&&!flags.evidenceVerb)return 'EMPTY_OR_VAGUE';
+  if(/^มี\s|^ไม่มี\s|^ทำแล้ว|อยู่แล้ว$|ครบถ้วน$|^พบ$/.test(s)&&s.length<25&&!flags.hasEvidence)return 'EMPTY_OR_VAGUE';
+  // IMPROVEMENT_OPPORTUNITY: positive base + recommendation cue (no deviation)
+  if(IQA_BRAIN.improvement.test(s)&&!flags.deficiency)return 'IMPROVEMENT_OPPORTUNITY';
+  if(flags.conformity&&(flags.has(flags.V.recommend)||/แนะนำ|ควร(เพิ่ม|ปรับ|พิจารณา)/.test(s))&&!flags.deficiency)return 'IMPROVEMENT_OPPORTUNITY';
+  // DEVIATION_EVIDENCE
+  if(flags.deficiency&&!flags.conformity)return 'DEVIATION_EVIDENCE';
+  // POSITIVE_EVIDENCE
+  if(flags.conformity&&!flags.deficiency)return 'POSITIVE_EVIDENCE';
+  // Fallback
+  return flags.hasEvidence?'POSITIVE_EVIDENCE':'EMPTY_OR_VAGUE';
+}
+// ===== v3 Coherence matrix (declared × content_signal) =====
+function coherenceMatrix(declared,signal,isHiRisk){
+  // returns {match, should_be, severity}
+  var M={
+    'C':{
+      'POSITIVE_EVIDENCE':       {match:'MATCH',                should_be:null,severity:'none'},
+      'DEVIATION_EVIDENCE':      {match:'MISMATCH',             should_be:'NC',severity:'none'},
+      'IMPROVEMENT_OPPORTUNITY': {match:'REVIEW',               should_be:'B', severity:'none'},
+      'EMPTY_OR_VAGUE':          {match:'INSUFFICIENT_EVIDENCE',should_be:null,severity:'no_evidence'},
+      'RESTATES_QUESTION':       {match:'INSUFFICIENT_EVIDENCE',should_be:null,severity:'no_evidence'}
+    },
+    'NC':{
+      'DEVIATION_EVIDENCE':      {match:'MATCH',                should_be:null,severity:'none'},
+      'POSITIVE_EVIDENCE':       {match:'MISMATCH',             should_be:'C', severity:'none'},
+      'IMPROVEMENT_OPPORTUNITY': {match:'MISMATCH',             should_be:'B', severity:'over_grading'},
+      'EMPTY_OR_VAGUE':          {match:'INSUFFICIENT_EVIDENCE',should_be:null,severity:'no_evidence'},
+      'RESTATES_QUESTION':       {match:'INSUFFICIENT_EVIDENCE',should_be:null,severity:'no_evidence'}
+    },
+    'B':{
+      'IMPROVEMENT_OPPORTUNITY': {match:'MATCH',                should_be:null,severity:'none'},
+      'DEVIATION_EVIDENCE':      {match:'MISMATCH',             should_be:'NC',severity:isHiRisk?'under_grading_risk':'none'},
+      'POSITIVE_EVIDENCE':       {match:'REVIEW',               should_be:'C', severity:'none'},
+      'EMPTY_OR_VAGUE':          {match:'INSUFFICIENT_EVIDENCE',should_be:null,severity:'no_evidence'},
+      'RESTATES_QUESTION':       {match:'INSUFFICIENT_EVIDENCE',should_be:null,severity:'no_evidence'}
+    }
+  };
+  return (M[declared]&&M[declared][signal])||{match:'REVIEW',should_be:null,severity:'none'};
+}
+// ===== Lead-Auditor Evaluation Engine (brain-powered, deterministic) =====
+//   scores (0-5): objective_evidence, requirement_link, writing_quality, auditor_logic
+//   + completeness (element count) ; 5-element weighted -> total_percentage (0-100)
+//   verdict: Perfect | Acceptable | Faulty ; is_savable (Faulty=false, label wrong)
+//   + coverage (0-4, Prompt.txt) + missing_elements + coaching + suggested_sentence
+// CORE RULE: short-but-correct lines ("ไม่มีนโยบาย" for NC, "ไม่พบสิ่งผิดปกติ" for C)
+//   = classification 100%, NEVER penalize. NC text must be negative, C must be positive.
 function evaluateAuditSentence(status,text,ctx){
   ctx=ctx||{};
   var s=(text||'').trim();
@@ -10851,7 +10966,11 @@ function evaluateAuditSentence(status,text,ctx){
   var posBadRe=new RegExp('(พบ|เจอ|มี|ตรวจพบ|สังเกตพบ)\\s*(?:'+V.badThings.join('|')+')');
   var broadNegRe=/ไม่(ได้|สามารถ|มี|พบ|เจอ|ครบ|ถูก|เป็น|ตรง|ผ่าน|เพียงพอ|ครอบคลุม|เหมาะ|ทัน|ปลอดภัย|เคย|ระบุ|กำหนด|ชัดเจน)/;
   var defc=has(V.deficiency)||negGoodRe.test(s)||posBadRe.test(s)||broadNegRe.test(s);
-  var conf=negBadRe.test(s)||(has(V.positives)&&!defc);
+  // A C report usually states conformity by DESCRIBING found evidence ("ตรวจพบเอกสาร...")
+  // rather than literally writing "สอดคล้อง". Treat evidence-found + no-deficiency as
+  // conformity direction (Brain: requirement met + objective evidence present = C).
+  var evidenceVerb=/ตรวจพบ|พบว่า|สุ่มตรวจ|ตรวจสอบพบ|เปิดดู|เรียกดู|สังเกต|สัมภาษณ์|ทดสอบ/.test(s);
+  var conf=negBadRe.test(s)||(has(V.positives)&&!defc)||(evidenceVerb&&has(V.evidences)&&!defc);
   var praise=has(V.praise)||(has(V.positives)&&/ทุกประการ|ทุกอย่าง/.test(s)&&!defc);
   // ----- Layer 4a: auditor_logic_score (semantic direction vs status) -----
   var logic;
@@ -10870,58 +10989,171 @@ function evaluateAuditSentence(status,text,ctx){
     else if(defc)logic=2;
     else logic=3;
   }
-  // ----- Layer 1: objective_evidence_score -----
-  var ev=0;
-  if(has(V.actions))ev++;
-  if(has(V.evidences))ev++;
-  if(has(V.places))ev++;
-  if(/\d/.test(s))ev++;
-  if(/[A-Z]{2,}|Rev|No\.|เลขที่|ฉบับ|หมายเลข/.test(s))ev++;
-  ev=Math.min(5,ev);
-  // ----- Layer 3: writing_quality_score (length / structure) -----
-  var L=s.length,wq;
-  if(L<6)wq=1;else if(L<35)wq=3;else if(L<70)wq=4;else wq=5;
-  if(['ผ่าน','ปกติ','ดี','โอเค','ok','OK','-','N/A'].indexOf(s)>=0)wq=1;
-  // ----- Layer 2: requirement_link_score -----
-  var rl=3;
-  if(has(V.stdRefs))rl++;
+  var L=s.length;
+  // ----- Element 1: objective_evidence (Brain v1 word_pattern positive_indicators) -----
+  var posPts=0;
+  IQA_BRAIN.positive.forEach(function(p){if(p.re.test(s))posPts+=p.s;});
+  var ev=Math.max(0,Math.min(5,Math.round(posPts/6)));   // ~30 pts of evidence => 5
+  // ----- Element 3: factual_description (Brain v1 negative_indicators + ERR-001/002/009) -----
+  var negPts=0;
+  IQA_BRAIN.negative.forEach(function(p){if(p.re.test(s))negPts+=p.s;});
+  var wq;
+  if(L<6)wq=1;else if(L<20)wq=2;else if(L<40)wq=3;else if(L<70)wq=4;else wq=5;
+  if(IQA_BRAIN.yesno.indexOf(s)>=0)wq=1;                  // bare yes/no answer
+  if(negPts<=-10)wq=Math.min(wq,2);                       // opinion/speculation language
+  if(negPts<=-20)wq=Math.min(wq,1);                       // "didn't actually check"
+  // ----- Element 2: requirement_link (clause/standard reference) -----
+  var hasStd=/ISO|FSSC|GHP|HACCP|GMP|PRP|OPRP|CCP|Codex|มอก|19011|22000|9001|22002|allergen|สารก่อภูมิแพ้/i.test(s);
+  var hasClauseNum=/ข้อ\s*\d+\.\d|\b\d+\.\d+(\.\d+)?\b|มาตรา\s*\d/.test(s);
+  var hasGeneric=/ข้อกำหนด|มาตรฐาน|เกณฑ์|requirement|clause|SOP|WI|แผน|Plan/i.test(s);
+  var rl;
+  if(hasStd&&hasClauseNum)rl=5;else if(hasStd||hasClauseNum)rl=4;else if(hasGeneric)rl=3;else rl=2;
   var guideTxt=((ctx.guide&&(ctx.guide.cc||'')+' '+(ctx.guide&&ctx.guide.nc||'')+' '+(ctx.guide&&ctx.guide.d||''))||'');
   if(guideTxt.trim()){
     var toks=s.match(/[ก-๙a-zA-Z]{4,}/g)||[];
-    if(toks.some(function(t){return guideTxt.indexOf(t)>=0;}))rl++;
+    if(toks.some(function(t){return guideTxt.indexOf(t)>=0;}))rl=Math.min(5,rl+1);
   }
+  // ERR-003: an NC with no clause/standard reference at all is incomplete
+  if(status==='NC'&&!hasStd&&!hasClauseNum&&!/ไม่สอดคล้อง|ไม่เป็นไปตาม/.test(s))rl=Math.min(rl,2);
   if(logic===0)rl=Math.min(rl,1);
   rl=Math.max(0,Math.min(5,rl));
-  var total=Math.round((ev+rl+wq+logic)/20*100);
-  // ----- Verdict + savable (022446.txt rule) -----
+  // ----- Element 4: completeness (Brain v2 minimum-elements per C/NC/B) -----
+  var elem=0,missing=[];
+  if(status==='C'){
+    var cDoc=/เอกสาร|บันทึก|record|log|ทะเบียน|แบบฟอร์ม|ใบ|SOP|WI|รายงาน|คู่มือ|แผน|Plan|รหัส|Matrix|Schedule|List/i.test(s);
+    var cWho=/สัมภาษณ์|สอบถาม|สังเกต|คุณ[ก-๙]|พนักงาน|หัวหน้า|ผู้จัดการ|QMR|QC|GM|ช่าง/.test(s);
+    var cRes=/\d/.test(s)||/พบว่า|ผลปกติ|อยู่ในเกณฑ์|ครบถ้วน|ครบทุก/.test(s);
+    var cConf=/สอดคล้อง|เป็นไปตาม|ตามเกณฑ์|ตาม\s*SOP|ตามข้อกำหนด|ตามแผน|ผ่านเกณฑ์|cross[\s-]*check|ตรงกัน|ยืนยัน|triangulation|verify/i.test(s);
+    if(cDoc)elem++;else missing.push('ชื่อ/รหัสเอกสารหรือบันทึกที่ตรวจ');
+    if(cWho)elem++;else missing.push('ผู้ที่สัมภาษณ์/สังเกต (ชื่อ-ตำแหน่ง)');
+    if(cRes)elem++;else missing.push('ผลที่พบ (ค่า/จำนวน/สถานะ)');
+    if(cConf)elem++;else missing.push('ระบุว่าสอดคล้องกับอะไร (ข้อกำหนด/SOP/แผน)');
+  }else if(status==='NC'){
+    if(defc||broadNegRe.test(s)||has(V.negations))elem++;else missing.push('ระบุสิ่งที่ไม่สอดคล้องให้ชัดเจน');
+    if(/เอกสาร|บันทึก|สัมภาษณ์|สังเกต|พบ|คุณ[ก-๙]|ถ่ายภาพ|Photo|สุ่มตรวจ/i.test(s))elem++;else missing.push('หลักฐานเชิงประจักษ์ (สิ่งที่พบจริง)');
+    if(hasStd||hasClauseNum)elem++;else missing.push('อ้างอิงข้อกำหนดที่ไม่สอดคล้อง (Clause)');
+    if(/กำหนดให้|กำหนดว่า|ระบุว่า|ที่กำหนด|shall|ต้อง[ก-๙]/.test(s))elem++;else missing.push('ข้อความข้อกำหนดระบุว่าอย่างไร');
+  }else{ // B
+    if(/สอดคล้อง|เป็นไปตาม|พบว่ามี|ปฏิบัติ|ดำเนินการได้|ครบถ้วน|มีระบบ|ทำได้ดี/.test(s))elem++;else missing.push('สถานะปัจจุบัน (สอดคล้องแล้วในเรื่องใด)');
+    if(has(V.recommend)||/ควร|แนะนำ|เสนอ|พิจารณา/.test(s))elem++;else missing.push('โอกาส/ข้อเสนอแนะปรับปรุง');
+    if(/เพื่อ|ป้องกัน|ความเสี่ยง|แนวโน้ม|เนื่องจาก|เพราะ|best\s*practice|Codex|มาตรฐาน/i.test(s))elem++;else missing.push('เหตุผลรองรับ (ความเสี่ยง/อ้างอิง)');
+    if(/เพิ่ม|ปรับ|จัดทำ|กำหนด|ทบทวน|ติดตั้ง|อบรม|แก้ไข/.test(s))elem++;else missing.push('แนวทางปรับปรุงที่ทำได้จริง');
+  }
+  var completeness=elem/4;
+  // ----- 5-element weighted total (Brain v1 step_4_score_calculation) -----
+  // C/NC lean on objective evidence; B (Observation) is judged mainly on its 4 required
+  // elements (status+opportunity+rationale+recommendation), so completeness weighs more.
+  var W=status==='B'
+    ? {ev:0.15,rl:0.10,wq:0.25,cp:0.40,lg:0.10}
+    : {ev:0.30,rl:0.15,wq:0.25,cp:0.20,lg:0.10};
+  var total=Math.round((ev/5*W.ev + rl/5*W.rl + wq/5*W.wq + completeness*W.cp + logic/5*W.lg)*100);
+  total=Math.max(0,Math.min(100,total));
+  var coverage=total>=90?4:total>=70?3:total>=40?2:1; // Prompt.txt coverage_score
+  // ===== v3 Coherence Engine — categorical Lead-Auditor verdict (ISO 19011:2018) =====
+  // Independently classify the Finding content's direction, then compare with declared.
+  var hasEvidence=ev>=2||/เอกสาร|บันทึก|รหัส|Rev|สัมภาษณ์|สังเกต|ตรวจพบ|สุ่มตรวจ/.test(s);
+  // Negative auditing for C: "ไม่พบ+bad-thing" is conformity, not deviation
+  // (Gemini ...208249.txt: short-correct lines must keep logic=100%, never penalize).
+  var negativeAuditing=negBadRe.test(s);
+  var signal=classifyContentSignal(s,{question:ctx.question||(ctx.guide&&ctx.guide.q)||''},
+    {V:V,has:has,deficiency:defc&&!negativeAuditing,conformity:conf,evidenceVerb:evidenceVerb,hasEvidence:hasEvidence||negativeAuditing});
+  var isHiRisk=IQA_BRAIN.hiRisk.test(s+' '+(ctx.clause?String(ctx.clause):'')+' '+(ctx.guide?(ctx.guide.cc||'')+' '+(ctx.guide.nc||''):''));
+  // Mandatory-missing pattern => DEVIATION (escalates B's severity to under_grading_risk)
+  if(IQA_BRAIN.mandatoryMissing.test(s))signal='DEVIATION_EVIDENCE';
+  // ===== v4 awareness_competence_logic =====
+  // For ASK_FOR_RESPONSE_AWARENESS questions, the interview answer IS valid evidence:
+  //   explained -> POSITIVE_EVIDENCE (C), couldn't explain -> DEVIATION_EVIDENCE (NC).
+  // A separate writing-quality layer flags missing interviewee identity WITHOUT changing
+  // the verdict direction (form_correct=false, coaching to add who/position/count).
+  var qMode=classifyQuestionMode(ctx.question||(ctx.guide&&ctx.guide.q)||'');
+  var awarenessForm=true,awarenessThin=false;
+  if(qMode==='AWARENESS'&&(IQA_BRAIN.awInterview.test(s)||IQA_BRAIN.awPos.test(s)||IQA_BRAIN.awNeg.test(s))){
+    if(IQA_BRAIN.awNeg.test(s))signal='DEVIATION_EVIDENCE';     // couldn't explain = NC direction
+    else if(IQA_BRAIN.awPos.test(s))signal='POSITIVE_EVIDENCE'; // explained = C direction (A.17)
+    // Writing-quality: needs WHO (identity/position/count) + substance of the answer
+    var hasIdentity=IQA_BRAIN.awIdentity.test(s);
+    var hasSubstance=s.length>=42||/ว่า|คือ|ต้อง|เมื่อ|ได้แก่|เช่น|:/.test(s.replace(IQA_BRAIN.awPos,'').replace(IQA_BRAIN.awNeg,''));
+    if(!hasIdentity||!hasSubstance){awarenessForm=false;awarenessThin=!hasSubstance;}
+  }
+  var coh=coherenceMatrix(status,signal,isHiRisk);
+  // ----- Verdict mapping (kept Perfect/Acceptable/Faulty contract for the UI) -----
+  // Faulty (blocks Pass) ONLY when label CONTRADICTS content (MISMATCH).
+  // REVIEW = soft suggestion (Acceptable). INSUFFICIENT = Acceptable + strong coach.
+  // Vague writing is never blocked — fair to auditors whose pay depends on the score.
   var verdict,savable;
-  // B/OFI: evidence (records) is less relevant — a neutral recommendation with a
-  // prevention/risk rationale is a "perfect" observation.
-  var strongB=status==='B'&&logic>=4&&L>=20&&/ป้องกัน|ความเสี่ยง|แนวโน้ม|เพื่อ/.test(s);
-  if(logic<3){verdict='Faulty';savable=false;}
-  else if((logic>=4&&total>=70&&ev>=2&&wq>=4)||strongB){verdict='Perfect';savable=true;}
+  var strongB=status==='B'&&signal==='IMPROVEMENT_OPPORTUNITY'&&L>=20&&/ป้องกัน|ความเสี่ยง|แนวโน้ม|เพื่อ/.test(s);
+  if(coh.match==='MISMATCH'){verdict='Faulty';savable=false;}
+  else if(coh.match==='MATCH'&&awarenessForm&&((total>=82&&ev>=3)||strongB)){verdict='Perfect';savable=true;}
   else{verdict='Acceptable';savable=true;}
-  // ----- Coaching + suggested sentence -----
+  // ----- Coaching (โทนพี่สอนน้อง ตาม v3 ai_system_prompt) -----
   var clauseHint='';
   if(ctx.clause){var cc=(Array.isArray(ctx.clause)?ctx.clause.join(' / '):String(ctx.clause)).trim();if(cc)clauseHint=' ('+cc.substring(0,48)+')';}
+  var miss3=missing.slice(0,3).join(' · ');
   var coaching='',suggested='';
   if(verdict==='Perfect'){
-    coaching='รายงานยอดเยี่ยมตามมาตรฐานสากลแล้วครับ';
-  }else if(verdict==='Faulty'){
-    if(status==='C')coaching='สถานะไม่ตรงกับเนื้อหา: เลือก C (สอดคล้อง) แต่เนื้อหาเป็นเชิงลบ — ควรเปลี่ยนสถานะเป็น NC หรือแก้เนื้อหาให้เป็นเชิงบวก';
-    else if(status==='NC')coaching='สถานะไม่ตรงกับเนื้อหา: เลือก NC (ไม่สอดคล้อง) แต่เนื้อหาเป็นเชิงบวก — ควรเปลี่ยนสถานะเป็น C หรือแก้เนื้อหาให้ชี้ข้อบกพร่อง';
-    else coaching='สถานะไม่ตรงกับเนื้อหา: ข้อสังเกต (B) ควรเป็นกลางหรือเชิงป้องกัน — ไม่ควรเป็นเชิงบวกจนเป็น C หรือเชิงลบจนเป็น NC';
-  }else{
-    if(status==='C'){coaching='บันทึกได้ครับ ตรรกะถูกต้อง — จะโปรขึ้นหากระบุวิธีทวนสอบ (สุ่มตรวจบันทึก/เดินสำรวจ) และจุดที่ตรวจ';suggested='จากการสุ่มตรวจบันทึกและเดินสำรวจหน้างาน '+s+' ซึ่งเป็นไปตามเกณฑ์'+clauseHint;}
-    else if(status==='NC'){coaching='บันทึกได้ครับ ตรรกะถูกต้อง — แนะนำให้ระบุพื้นที่/แผนก หลักฐานเชิงประจักษ์ และข้อกำหนดที่ขัดแย้ง';suggested=s+' ซึ่งไม่สอดคล้องกับข้อกำหนด'+clauseHint+' (ควรระบุพื้นที่/แผนกและหลักฐานเพิ่มเติม)';}
-    else{coaching='บันทึกได้ครับ — ข้อสังเกตจะสมบูรณ์ขึ้นหากเพิ่มเหตุผลเชิงป้องกันความเสี่ยง';suggested='ควรพิจารณา '+s+' เพื่อป้องกันความเสี่ยงในอนาคต';}
+    coaching='เขียนได้ระดับ Lead Auditor — หลักฐานครบ ผลตรงกับเนื้อหา (คะแนน '+total+'/100 · coverage '+coverage+'/4)';
+  }else if(coh.match==='MISMATCH'){
+    // Label contradicts content — v3 worked_examples templates
+    if(status==='C'&&coh.should_be==='NC')
+      coaching='หลักฐานที่คุณบันทึกชี้ชัดว่าเป็น NC ครับ ลองเปลี่ยนผลจาก C เป็น NC แล้วเพิ่มการอ้างอิงข้อกำหนด'+clauseHint+' ที่ถูกละเมิด';
+    else if(status==='NC'&&coh.should_be==='C')
+      coaching='เนื้อหาบรรยายว่าสอดคล้องล้วนๆ ไม่มีการเบี่ยงเบนใดๆ น่าจะติ๊กผิดช่อง — เปลี่ยนผลจาก NC เป็น C ครับ';
+    else if(status==='NC'&&coh.should_be==='B')
+      coaching='ยังไม่มีข้อกำหนด (shall) ที่ถูกละเมิดชัดเจน เป็นเพียงข้อเสนอแนะปรับปรุง การออก NC จะสร้างภาระ CAR เกินจำเป็น ลองเปลี่ยนเป็น B จะเหมาะกว่าครับ';
+    else if(status==='B'&&coh.should_be==='NC'){
+      coaching=(isHiRisk?'⚠️ ระวัง under-grading: ':'')+
+        'เนื้อหาบรรยายการละเมิดข้อกำหนดบังคับจริง'+(isHiRisk?' โดยเฉพาะเรื่อง Food Safety':'')+
+        ' ควรเป็น NC ไม่ใช่ B เพื่อให้มี CAR ติดตามแก้ไข (อ้างข้อกำหนด'+clauseHint+' ประกอบ)';
+    }
+    else coaching='ผลที่เลือกขัดกับเนื้อหา — ทบทวนว่าควรเป็น '+(coh.should_be||'C/NC/B ที่ตรงกับหลักฐาน');
+  }else if(coh.match==='INSUFFICIENT_EVIDENCE'){
+    // Not blocked, but ISO 19011 A.5/A.18 says evidence is too thin
+    if(status==='C')
+      coaching='ยังประกาศ C ไม่ได้จากข้อความนี้ครับ (ISO 19011 A.18.2 ต้องมีหลักฐานยืนยัน) ลองระบุ: ตรวจพบเอกสารอะไร (รหัส/Rev/วันที่) · ผู้ให้ข้อมูล · ผลที่พบจริง';
+    else if(status==='NC')
+      coaching='NC ที่ไม่มีหลักฐานจะถูกผู้รับตรวจโต้แย้งได้ (ISO 19011 A.18.3) — เพิ่ม: สิ่งที่พบจริง · ขัดกับข้อกำหนดใด · ข้อกำหนดระบุว่าอย่างไร';
+    else
+      coaching='ข้อเสนอแนะ B ต้องเฉพาะเจาะจง — ระบุว่าปัจจุบันสอดคล้องเรื่องใด · จุดที่ควรปรับ · เหตุผลรองรับ';
+    if(miss3)coaching+=' (ขาด: '+miss3+')';
+  }else if(coh.match==='REVIEW'){
+    if(status==='B'&&coh.should_be==='C')
+      coaching='เนื้อหาเป็นการสอดคล้องล้วนๆ ไม่มีข้อเสนอแนะ — ถ้าไม่มีอะไรให้ปรับปรุงจริง ควรเป็น C ครับ';
+    else if(status==='C'&&coh.should_be==='B')
+      coaching='สอดคล้องแล้วและมีข้อเสนอแนะปรับปรุงด้วย — ถ้าข้อเสนอนั้นจำเป็น อาจเป็น B จะเหมาะกว่า; ถ้าเป็นแค่ note ก็คง C ได้';
+    else coaching='ขอทบทวนผลอีกครั้งครับ — '+(miss3||'ลองดูว่าตรงกับ '+coh.should_be+' มากกว่าหรือไม่');
+  }else{ // MATCH but not Perfect → Acceptable
+    coaching='บันทึกได้ครับ ผลตรงกับเนื้อหา (คะแนน '+total+'/100) — '+(miss3?'จะโปรขึ้นหากเพิ่ม: '+miss3:'เพิ่มหลักฐานเชิงปริมาณจะดียิ่งขึ้น');
   }
-  var emoji=verdict==='Perfect'?'🟢':verdict==='Faulty'?'❌':'🟡';
+  // v4 awareness writing-quality override: direction is correct but interviewee identity /
+  // answer substance is missing — keep the verdict, coach to make it verifiable (A.5).
+  if(qMode==='AWARENESS'&&!awarenessForm&&coh.match!=='MISMATCH'){
+    coaching='ผล '+status+' ใช้ได้ครับ (คำถามความตระหนัก การสัมภาษณ์คือหลักฐานที่ถูกต้อง) — แต่ควรเขียนให้ตรวจสอบย้อนได้: ระบุว่า'+
+      (awarenessThin?'สัมภาษณ์ใคร/ตำแหน่งอะไร/กี่คน และสรุป "สาระคำตอบ" ที่เขาอธิบาย':'สัมภาษณ์ใคร ตำแหน่งอะไร กี่คน')+
+      ' (ISO 19011 A.5 หลักฐานต้อง verify ได้)';
+  }
+  // Suggested sentence — only when we can actually help the auditor rewrite
+  if(verdict!=='Perfect'&&coh.match!=='MISMATCH'){
+    if(qMode==='AWARENESS'&&!awarenessForm){
+      suggested=(IQA_BRAIN.awNeg.test(s)
+        ?'สุ่มสัมภาษณ์ [ชื่อ/ตำแหน่งผู้ปฏิบัติงาน] จำนวน [N] คน พบว่าตอบไม่ได้ว่า '+s.replace(IQA_BRAIN.awNeg,'').trim()+' ซึ่งสะท้อนความตระหนัก/ความสามารถไม่เพียงพอ'+clauseHint
+        :'สุ่มสัมภาษณ์ [ชื่อ/ตำแหน่งผู้ปฏิบัติงาน] จำนวน [N] คน อธิบายได้ว่า [สรุปสาระคำตอบที่ถูกต้อง] ซึ่งแสดงความตระหนักตามข้อกำหนด'+clauseHint);
+    }
+    else if(status==='C')suggested='จากการสุ่มตรวจบันทึก/เดินสำรวจหน้างาน '+s+' ซึ่งสอดคล้องตามเกณฑ์'+clauseHint;
+    else if(status==='NC')suggested=s+' ไม่สอดคล้องกับข้อกำหนด'+clauseHint+' ที่กำหนดให้ต้องปฏิบัติ (ระบุพื้นที่/แผนก + หลักฐานเชิงประจักษ์เพิ่มเติม)';
+    else suggested='ปัจจุบันเรื่องนี้สอดคล้องอยู่แล้ว อย่างไรก็ตามควร '+s+' เพื่อป้องกันความเสี่ยงในอนาคต';
+  }
+  var emoji=verdict==='Perfect'?'🟢':verdict==='Faulty'?'❌':(coh.severity==='under_grading_risk'?'⚠️':'🟡');
   return{
     verdict:verdict,grade:verdict,is_savable:savable,
     message:emoji+' '+coaching,
     coaching:coaching,suggested:suggested,
-    scores:{objective_evidence:ev,requirement_link:rl,writing_quality:wq,auditor_logic:logic,total_percentage:total}
+    coverage:coverage,missing_elements:missing,
+    // v3 categorical output (output_template_for_app schema)
+    coherence:{match:coh.match,should_be:coh.should_be,severity_flag:coh.severity,content_signal:signal,is_hi_risk:isHiRisk},
+    classification_declared:status,classification_match:coh.match,classification_should_be:coh.should_be,
+    question_mode:qMode,form_correct:awarenessForm,
+    evidence_sufficient:coh.match!=='INSUFFICIENT_EVIDENCE',
+    scores:{objective_evidence:ev,requirement_link:rl,writing_quality:wq,completeness:Math.round(completeness*5),auditor_logic:logic,total_percentage:total}
   };
 }
 function doAuditReview(){
@@ -11010,7 +11242,7 @@ function doAuditReview(){
     }
     // D) Lead-Auditor 4-layer evaluation (spec in /Gemini folder)
     //    Perfect → จุดแข็ง · Faulty → ต้องปรับปรุง · Acceptable → ข้อเสนอแนะ (ไม่บล็อก)
-    var ev=evaluateAuditSentence(selType,trimmed,{clause:q.c,guide:guide});
+    var ev=evaluateAuditSentence(selType,trimmed,{clause:q.c,guide:guide,question:q.q});
     if(ev.verdict==='Perfect'){qualityGoods.push({n:q.n,type:selType,msg:ev.message,score:ev.scores.total_percentage});}
     else if(ev.verdict==='Faulty'){qualityIssues.push({n:q.n,type:selType,msg:ev.message,score:ev.scores.total_percentage});}
     else if(ev.suggested){writingSuggestions.push({n:q.n,type:selType,coaching:ev.coaching,suggested:ev.suggested,score:ev.scores.total_percentage});}
@@ -11672,18 +11904,45 @@ function showReviewReport(data){
     });
     html+='</div>';
   }
-  if(data.qualityIssues.length>0){
+  // ----- Merged per-question view: issues + suggestion shown together, ข้อต่อข้อ -----
+  // Group qualityIssues + writingSuggestions by question number; each entry shows the
+  // issue(s) for that question immediately followed by the suggested rewrite (if any).
+  var byN={},order=[];
+  function bucket(n){if(!byN[n]){byN[n]={n:n,type:null,issues:[],sugg:null};order.push(n);}return byN[n];}
+  data.qualityIssues.forEach(function(iss){var b=bucket(iss.n);b.type=b.type||iss.type;b.issues.push(iss);});
+  (data.writingSuggestions||[]).forEach(function(w){var b=bucket(w.n);b.type=b.type||w.type;b.sugg=w;});
+  if(order.length>0){
+    var sCount=(data.writingSuggestions&&data.writingSuggestions.length)||0;
     html+='<div class="review-section">';
-    html+='<div class="review-section-hdr">⚠️ Lead Auditor Review — คุณภาพผลการตรวจ <span class="badge badge-warn">'+data.qualityIssues.length+' รายการ</span></div>';
-    data.qualityIssues.forEach(function(iss){
-      var isInformal=iss.msg.indexOf('[INFORMAL]')===0;
-      var displayMsg=isInformal?iss.msg.substring(10):iss.msg;
-      var jumpAttr=' onclick="jumpToRow(\''+String(iss.n).replace(/'/g,"\\'")+'\')" ';
-      if(isInformal){
-        html+='<div class="review-item clickable" style="background:#f8d7da;border:2px solid #dc3545;border-radius:8px;margin:6px 8px;padding:10px 14px"'+jumpAttr+'><span class="q-num">ข้อ '+iss.n+' ['+iss.type+']:</span> <span style="color:#721c24;font-weight:700">⛔ '+escHtml(displayMsg)+' <span style="color:#dc3545">(−5 คะแนน)</span></span></div>';
-      }else{
-        html+='<div class="review-item clickable"'+jumpAttr+'><span class="q-num">ข้อ '+iss.n+' ['+iss.type+']:</span> <span class="suggestion">'+escHtml(displayMsg)+'</span></div>';
+    html+='<div class="review-section-hdr">⚠️ Lead Auditor Review — รายข้อที่ต้องปรับปรุง <span class="badge badge-warn">'+order.length+' ข้อ</span>'
+        +(sCount>0?' <span class="badge" style="background:#facc15;color:#333;margin-left:4px">💡 มีตัวอย่างให้คัดลอก '+sCount+' ข้อ</span>':'')+'</div>';
+    order.forEach(function(n){
+      var b=byN[n];
+      var jumpAttr=' onclick="jumpToRow(\''+String(n).replace(/'/g,"\\'")+'\')" ';
+      html+='<div class="review-item" style="border-left:3px solid '+(b.sugg?'#facc15':'#fb923c')+';padding-left:10px;margin:8px 8px">';
+      html+='<div class="clickable" style="font-weight:700;margin-bottom:4px"'+jumpAttr+'><span class="q-num">ข้อ '+n+(b.type?' ['+b.type+']':'')+'</span></div>';
+      // Issues for this question
+      b.issues.forEach(function(iss){
+        var isInformal=iss.msg.indexOf('[INFORMAL]')===0;
+        var displayMsg=isInformal?iss.msg.substring(10):iss.msg;
+        if(isInformal){
+          html+='<div class="clickable" style="background:#f8d7da;border:2px solid #dc3545;border-radius:8px;padding:8px 12px;margin:4px 0"'+jumpAttr+'><span style="color:#721c24;font-weight:700">⛔ '+escHtml(displayMsg)+' <span style="color:#dc3545">(−5 คะแนน)</span></span></div>';
+        }else{
+          html+='<div class="clickable" style="padding:4px 0"'+jumpAttr+'><span class="suggestion">• '+escHtml(displayMsg)+'</span></div>';
+        }
+      });
+      // Inline suggested rewrite for this same question
+      if(b.sugg){
+        var w=b.sugg;
+        if(b.issues.length===0){
+          html+='<div class="clickable" style="padding:4px 0"'+jumpAttr+'><span class="suggestion">• '+escHtml(w.coaching)+(w.score!=null?' ('+w.score+'%)':'')+'</span></div>';
+        }
+        html+='<div style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;background:#fffbeb;border:1px dashed #facc15;border-radius:8px;padding:8px 10px">';
+        html+='<div style="flex:1;font-size:.9em;color:#444"><b style="color:#a16207">✍️ ตัวอย่างที่แนะนำ (คัดลอกไปแก้ไขได้):</b><br>'+escHtml(w.suggested)+'</div>';
+        html+='<button class="copy-suggest-btn" data-copy="'+escHtml(w.suggested).replace(/"/g,'&quot;')+'" style="flex-shrink:0;background:#1B6B93;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:.8em;cursor:pointer;font-weight:600">📋 คัดลอก</button>';
+        html+='</div>';
       }
+      html+='</div>';
     });
     html+='</div>';
   }
@@ -11693,21 +11952,6 @@ function showReviewReport(data){
     data.qualityGoods.forEach(function(g){
       var sc=(g.score!=null)?' <span style="color:#28a745;font-size:.82em">('+g.score+'%)</span>':'';
       html+='<div class="review-item"><span class="q-num">ข้อ '+g.n+' ['+g.type+']:</span> <span class="good">'+escHtml(g.msg)+'</span>'+sc+'</div>';
-    });
-    html+='</div>';
-  }
-  if(data.writingSuggestions&&data.writingSuggestions.length>0){
-    html+='<div class="review-section">';
-    html+='<div class="review-section-hdr">💡 ข้อเสนอแนะการเขียน (ผ่านแล้ว แต่ทำให้โปรขึ้นได้) <span class="badge" style="background:#facc15;color:#333">'+data.writingSuggestions.length+' ข้อ</span></div>';
-    data.writingSuggestions.forEach(function(w){
-      var sc=(w.score!=null)?' <span style="color:#a16207;font-size:.82em">('+w.score+'%)</span>':'';
-      var jumpAttr=' onclick="jumpToRow(\''+String(w.n).replace(/'/g,"\\'")+'\')" ';
-      html+='<div class="review-item" style="border-left:3px solid #facc15;padding-left:10px;margin:6px 8px">';
-      html+='<div class="clickable"'+jumpAttr+'><span class="q-num">ข้อ '+w.n+' ['+w.type+']:</span> <span class="suggestion">'+escHtml(w.coaching)+'</span>'+sc+'</div>';
-      html+='<div style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;background:#fffbeb;border:1px dashed #facc15;border-radius:8px;padding:8px 10px">';
-      html+='<div style="flex:1;font-size:.9em;color:#444"><b style="color:#a16207">✍️ ตัวอย่างที่แนะนำ:</b><br>'+escHtml(w.suggested)+'</div>';
-      html+='<button class="copy-suggest-btn" data-copy="'+escHtml(w.suggested).replace(/"/g,'&quot;')+'" style="flex-shrink:0;background:#1B6B93;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:.8em;cursor:pointer;font-weight:600">📋 คัดลอก</button>';
-      html+='</div></div>';
     });
     html+='</div>';
   }
