@@ -11732,7 +11732,42 @@ d:'Verification Plan, Validation Protocol, Inspection Records, Test Results'},
 interp:'ตรวจว่าองค์กรพิจารณาผลกระทบจากการเปลี่ยนแปลงสภาพภูมิอากาศต่อความปลอดภัยอาหาร/การดำเนินงาน (ประเด็นใหม่ตาม ISO Amendment 2024) — ผู้ตรวจควรดูว่ามีการประเมินความเสี่ยงที่เกี่ยวข้องและแผนรับมือ ไม่ใช่ละเลยเพราะคิดว่าไม่เกี่ยวกับโรงงาน',
 cc:'มีการพิจารณาผลกระทบจากการเปลี่ยนแปลงสภาพภูมิอากาศ ระบุความเสี่ยง มีแผนรับมือ',
 nc:'ไม่พิจารณาผลกระทบจากสภาพภูมิอากาศ ไม่มีแผนรับมือ ไม่ประเมินความเสี่ยงที่เกี่ยวข้อง',
-d:'Climate Risk Assessment, Adaptation Plan, Environmental Monitoring Records'}
+d:'Climate Risk Assessment, Adaptation Plan, Environmental Monitoring Records'},
+{kw:['สรรหา','คัดเลือก','รับสมัคร','recruit','พนักงานใหม่','ทดลองงาน','probation','ตำแหน่งงาน','job description','คุณสมบัติ','จ้างงาน'],
+interp:'ตรวจว่าองค์กรกำหนดคุณสมบัติตำแหน่งงานก่อนสรรหา และคัดเลือกตามเกณฑ์ที่วางไว้ ไม่ใช่รับมาก่อนแล้วค่อยดู — ผู้ตรวจควรดู Job Description/Job Requisition ว่าระบุคุณสมบัติ-หน้าที่-Competency ชัดเจน และเทียบกับคุณสมบัติจริงของผู้ที่รับเข้ามา',
+cc:'มี Job Description/Job Requisition ระบุคุณสมบัติ หน้าที่ และ Competency ก่อนสรรหา คัดเลือกตามเกณฑ์ มีบันทึก',
+nc:'ไม่มี JD/JR ไม่กำหนดคุณสมบัติก่อนรับ คัดเลือกไม่ตามเกณฑ์ ไม่มีบันทึก',
+d:'Job Description, Job Requisition Form, Selection Criteria, Interview Records, Probation Evaluation'},
+{kw:['ผัง','layout','โซน','zone','แบ่งพื้นที่','พื้นที่ผลิต','สายการผลิต','flow','การไหล'],
+interp:'ตรวจว่าผังโรงงานและการไหลของกระบวนการป้องกัน Cross-Contamination — ผู้ตรวจควรเดินสำรวจดูว่าการแบ่งโซน (สะอาด/กึ่งสะอาด/สกปรก) ชัดเจน ไม่มีเส้นทางตัดกัน และการไหลของคน-วัตถุดิบ-ของเสียไม่ทำให้เกิดการปนเปื้อนข้าม',
+cc:'ผังโรงงานแบ่งโซนชัดเจน เส้นทางการไหลไม่ตัดกัน ป้องกัน Cross-Contamination มี Process Flow',
+nc:'ผังไม่ชัดเจน โซนปนกัน เส้นทางตัดกัน มีความเสี่ยง Cross-Contamination',
+d:'Plant Layout, Zone Map, Process Flow Diagram, Personnel/Material Flow'},
+{kw:['ของเสีย','ขยะ','waste','กำจัดของเสีย','ทิ้ง','บ่อบำบัด','น้ำเสีย','wastewater'],
+interp:'ตรวจว่าการจัดการของเสีย/น้ำเสียไม่เป็นแหล่งปนเปื้อนย้อนกลับมาที่พื้นที่ผลิตหรือผลิตภัณฑ์ — ผู้ตรวจควรดูจุดรวบรวมขยะ ความถี่การนำออก ระบบบำบัดน้ำเสีย และบันทึกการกำจัดที่ถูกกฎหมาย',
+cc:'มีระบบจัดการของเสีย/น้ำเสีย แยกประเภท กำจัดตามกำหนด ไม่เป็นแหล่งปนเปื้อน มีบันทึก',
+nc:'ไม่มีระบบจัดการ ของเสียสะสม ไม่แยกประเภท เป็นแหล่งปนเปื้อน กำจัดไม่ถูกกฎหมาย',
+d:'Waste Management Procedure, บันทึกกำจัดของเสีย, Wastewater Treatment Records'},
+{kw:['ตรวจรับ','incoming','วัตถุดิบ','raw material','รับเข้า','ตรวจสอบวัตถุดิบ','coa','ใบรับรอง'],
+interp:'ตรวจว่าวัตถุดิบทุกรุ่นถูกตรวจรับตามเกณฑ์ก่อนใช้ในการผลิต — ผู้ตรวจควรดูเกณฑ์การตรวจรับ (Spec) ผลตรวจ/COA การตัดสินรับ-ปฏิเสธ และการจัดการเมื่อวัตถุดิบไม่ผ่านเกณฑ์',
+cc:'มีเกณฑ์ตรวจรับวัตถุดิบ ตรวจสอบทุก Lot/Batch มี COA มีบันทึก Hold/Release',
+nc:'ไม่มีเกณฑ์ตรวจรับ ไม่ตรวจ ไม่เรียก COA ใช้วัตถุดิบที่ไม่ผ่านเกณฑ์',
+d:'Incoming Inspection Procedure, Inspection Records, COA, Rejection Records'},
+{kw:['ควบคุมการผลิต','production','กระบวนการผลิต','ผลิต','process control','เดินสายการผลิต','สภาพแวดล้อมการผลิต'],
+interp:'ตรวจว่ากระบวนการผลิตถูกควบคุมตามเงื่อนไขที่กำหนด (พารามิเตอร์ เวลา อุณหภูมิ ฯลฯ) — ผู้ตรวจควรเดินสังเกตการปฏิบัติหน้างานจริงเทียบกับ WI/SOP และดูบันทึกควบคุมกระบวนการ',
+cc:'มี WI/SOP ครอบคลุม ปฏิบัติตาม บันทึกพารามิเตอร์ครบ สภาพแวดล้อมเหมาะสม',
+nc:'ไม่มี WI/SOP ไม่ปฏิบัติตาม ไม่บันทึกพารามิเตอร์ สภาพแวดล้อมไม่เหมาะสม',
+d:'WI/SOP, Production Records, Process Parameter Records, Environment Monitoring'},
+{kw:['ไฟฟ้า','electrical','ระบบไฟ','แสงสว่าง','lighting','พลังงาน','energy','สาธารณูปโภค','utility'],
+interp:'ตรวจว่าระบบไฟฟ้า/แสงสว่าง/สาธารณูปโภคเพียงพอและปลอดภัย ไม่เป็นแหล่งอันตรายต่อผลิตภัณฑ์หรือบุคลากร — ผู้ตรวจควรดูความเพียงพอของแสงสว่าง การป้องกันหลอดไฟแตก (Shatter-proof) ในพื้นที่ผลิต และสภาพทั่วไปของระบบไฟฟ้า',
+cc:'แสงสว่างเพียงพอ หลอดไฟมีฝาครอบป้องกัน ระบบไฟฟ้าปลอดภัย มีการบำรุงรักษา',
+nc:'แสงสว่างไม่เพียงพอ หลอดไฟไม่มีฝาครอบ ระบบไฟฟ้าไม่ปลอดภัย ไม่มีการบำรุงรักษา',
+d:'Lighting Survey, Glass & Brittle Plastic Register, Electrical Maintenance Records'},
+{kw:['ประเมินผล','performance','evaluation','ผลงาน','ดัชนีชี้วัด','วัดผล','monitor','เฝ้าติดตาม','analysis','วิเคราะห์ข้อมูล'],
+interp:'ตรวจว่าองค์กรวัดผลและวิเคราะห์ข้อมูลเพื่อตัดสินใจบนฐานข้อเท็จจริง ไม่ใช่รู้สึก — ผู้ตรวจควรดูว่ามีการกำหนดตัวชี้วัด เก็บข้อมูล วิเคราะห์แนวโน้ม และนำผลไปใช้ปรับปรุง',
+cc:'กำหนดตัวชี้วัดชัดเจน เก็บข้อมูลตามกำหนด วิเคราะห์แนวโน้ม นำผลไปปรับปรุง',
+nc:'ไม่กำหนดตัวชี้วัด ไม่เก็บข้อมูล ไม่วิเคราะห์ ไม่นำผลไปใช้',
+d:'KPI Records, Data Analysis Report, Trend Charts, Management Review Input'}
 ];
 function generateAutoGuide(questionText,clauseText){
   if(!questionText)return null;
@@ -11743,7 +11778,22 @@ function generateAutoGuide(questionText,clauseText){
     topic.kw.forEach(function(kw){if(q.indexOf(kw.toLowerCase())>=0)score++;});
     if(score>0)matches.push({topic:topic,score:score});
   });
-  if(matches.length===0)return null;
+  if(matches.length===0){
+    var fallback={interp:'ตรวจสอบว่าองค์กรมีระบบ/กระบวนการตามที่คำถามระบุ มีหลักฐานการปฏิบัติจริง และผลลัพธ์เป็นไปตามข้อกำหนด — ผู้ตรวจควรดูเอกสาร บันทึก และสังเกตการปฏิบัติจริงหน้างาน',cc:'',nc:'',d:'',auto:true};
+    if(clauseText){
+      var norm=normalizeClauseText(clauseText);var stdKey=null;
+      if(norm.indexOf('ISO 9001')>=0)stdKey='iso9001';
+      else if(norm.indexOf('ISO 22000')>=0)stdKey='iso22000';
+      else if(norm.indexOf('FSSC')>=0||norm.indexOf('Add')>=0)stdKey='add';
+      else if(norm.indexOf('ISO/TS')>=0)stdKey='prp';
+      if(stdKey&&typeof REQS_DATA!=='undefined'&&REQS_DATA[stdKey]){
+        var num=norm.match(/(\d+\.[\d.]+)/);
+        if(num){var desc=REQS_DATA[stdKey][num[1]];if(!desc){var parent=num[1].replace(/\.\d+$/,'');desc=REQS_DATA[stdKey][parent];}
+          if(desc)fallback.clauseDetail=norm+'\n'+desc;}
+      }
+    }
+    return fallback;
+  }
   matches.sort(function(a,b){return b.score-a.score;});
   var best=matches[0];
   var guide={interp:best.topic.interp||'',cc:best.topic.cc,nc:best.topic.nc,d:best.topic.d,auto:true};
@@ -11778,7 +11828,7 @@ function checkWritingProfessionalism(findingText,remarkText,selType){
   var r=remarkText||'';
   // AP-05: Emotional/blaming — ISO 19011 Fair presentation + Integrity violation
   var emotionalRe=/หย่อนยาน|ใช้ไม่ได้เลย|แทบไม่มีระบบ|ดูไม่จริงจัง|ไม่รู้เรื่อง|แย่\s*(มาก)?|ห่วย|ดูถูก|ไม่ใส่ใจงาน|พนักงานไม่ใส่ใจ|ไม่เอาไหน|สมควรถูกลงโทษ/;
-  var blameRe=/ให้ไปแก้เอง|ต้องรับผิดชอบ|ไปดูเองว่าผิด|ทำใหม่ทั้งหมด|หัวหน้า(แผนก)?ต้อง/;
+  var blameRe=/ให้ไปแก้เอง|ต้องรับผิดชอบ|ไปดูเองว่าผิด|ทำใหม่ทั้งหมด|(พนักงาน|เจ้าหน้าที่|หัวหน้า|ผู้จัดการ|ผู้ปฏิบัติงาน).{0,12}(บกพร่อง|ละเลย|ปล่อยปละ|ขาดความรับผิดชอบ|ไม่ยอมแก้ไข|ไม่ยอมทำ|ไม่ยอมปฏิบัติ|สมควรถูกลงโทษ)/;
   if(emotionalRe.test(f)||emotionalRe.test(r)){
     issues.push('ใช้ถ้อยคำเชิงอารมณ์/ตัดสิน — ละเมิด ISO 19011 Fair presentation ต้องบรรยายข้อเท็จจริงที่สังเกตได้อย่างเป็นกลาง');
   }
