@@ -379,6 +379,7 @@ td .cl-hover{cursor:help;border-bottom:1px dashed #f6ad55}
 .print-preview-container thead{position:relative;top:auto}
 .print-preview-container .sig-clear-btn{display:none}
 .print-preview-container .photo-remove-btn{display:none}
+.print-preview-container .photo-cell,.print-preview-container thead th:nth-child(9){display:none}
 .print-preview-toolbar{position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,var(--primary),var(--primary-med));color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;z-index:10000;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .print-preview-toolbar h3{margin:0;font-size:1em}
 .print-preview-toolbar button{background:#fff;color:var(--primary);border:none;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer;font-size:.9em;margin-left:8px}
@@ -389,12 +390,8 @@ td .cl-hover{cursor:help;border-bottom:1px dashed #f6ad55}
 @media print{
   #photoPrintSection{display:block;page-break-before:always}
   .photo-btn,.photo-remove-btn{display:none !important}
-  .photo-print-thumb{width:300px;height:auto;max-height:220px;object-fit:contain}
-  .photo-print-thumbs{display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;margin-top:6px}
-  .photo-print-item{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #ccc}
-  .photo-print-q{font-weight:700;color:var(--primary);font-size:.92em;margin-bottom:4px}
-  .photo-print-dept{font-size:.8em;color:var(--text-light);margin-bottom:6px}
-  .photo-print-section-title{font-size:1.1em;font-weight:800;color:var(--primary);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--primary-light)}
+  .photo-cell,thead th:nth-child(9){display:none !important}
+  #photoPrintSection{display:none !important}
 }
 thead th:nth-child(9){width:80px}
 .guide-btn{margin-top:16px;background:none;border:2px solid rgba(255,255,255,.5);color:var(--primary);border-radius:30px;padding:10px 28px;font-size:.92em;font-weight:600;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:8px}
@@ -10591,27 +10588,29 @@ function showGuidePopup(deptName,q,idx){
   var body=document.createElement('div');body.className='guide-popup-body';
   var qSec=document.createElement('div');qSec.className='guide-popup-section cl-sec';
   qSec.innerHTML='<h5>📝 คำถาม</h5><p>'+escHtml(q.q)+'</p>';body.appendChild(qSec);
-  if(guide){
-    if(guide.cc){var s=document.createElement('div');s.className='guide-popup-section cc-sec';
-      s.innerHTML='<h5>✅ เกณฑ์สอดคล้อง (Conformity)</h5><p>'+escHtml(guide.cc)+'</p>';body.appendChild(s);}
-    if(guide.nc){var s=document.createElement('div');s.className='guide-popup-section nc-sec';
-      s.innerHTML='<h5>❌ เกณฑ์ไม่สอดคล้อง (Non-Conformity)</h5><p>'+escHtml(guide.nc)+'</p>';body.appendChild(s);}
-    if(guide.d){var s=document.createElement('div');s.className='guide-popup-section d-sec';
-      s.innerHTML='<h5>📄 เอกสารที่คาดหวัง</h5><p>'+escHtml(guide.d)+'</p>';body.appendChild(s);}
-  }else{
-    var autoG=generateAutoGuide(q.q,q.c);
-    if(autoG){
-      var ab=document.createElement('div');ab.className='guide-popup-section';ab.style.cssText='background:#fff3e0;border-left:4px solid #ff9800;padding:8px 12px;margin-bottom:10px;border-radius:6px';
-      ab.innerHTML='<p style="margin:0;color:#e65100;font-size:.85em">🤖 <b>Auto-generated Guideline</b> — สร้างจากการตีความคำถามอัตโนมัติ</p>';body.appendChild(ab);
-      if(autoG.clauseDetail){var cs=document.createElement('div');cs.className='guide-popup-section cl-sec';cs.innerHTML='<h5>📖 ข้อกำหนดอ้างอิง</h5><p>'+escHtml(autoG.clauseDetail).replace(/\n/g,'<br>')+'</p>';body.appendChild(cs);}
-      if(autoG.cc){var s=document.createElement('div');s.className='guide-popup-section cc-sec';s.innerHTML='<h5>✅ เกณฑ์สอดคล้อง (Conformity)</h5><p>'+escHtml(autoG.cc).replace(/\n/g,'<br>')+'</p>';body.appendChild(s);}
-      if(autoG.nc){var s=document.createElement('div');s.className='guide-popup-section nc-sec';s.innerHTML='<h5>❌ เกณฑ์ไม่สอดคล้อง (Non-Conformity)</h5><p>'+escHtml(autoG.nc).replace(/\n/g,'<br>')+'</p>';body.appendChild(s);}
-      if(autoG.d){var s=document.createElement('div');s.className='guide-popup-section d-sec';s.innerHTML='<h5>📄 เอกสารที่คาดหวัง</h5><p>'+escHtml(autoG.d)+'</p>';body.appendChild(s);}
-    }else{
-      var ns=document.createElement('div');ns.className='guide-popup-section d-sec';
-      ns.innerHTML='<h5>ℹ️ หมายเหตุ</h5><p>ไม่พบข้อมูล Guideline สำหรับคำถามนี้</p>';body.appendChild(ns);
-    }
-  }
+  // Always run the interpretation engine, then merge with any curated GUIDE_DATA so the
+  // popup TEACHES: what the question is really probing → ผ่าน/NC แบบไหน → หลักฐานแบบไหน.
+  var autoG=generateAutoGuide(q.q,q.c);
+  function richer(a,b){a=(a||'').trim();b=(b||'').trim();if(!a)return b;if(!b)return a;return b.length>a.length+8?b:a;}
+  function mergeDocs(a,b){a=(a||'').trim();b=(b||'').trim();if(!a)return b;if(!b)return a;
+    var seen={},out=[];(a+', '+b).split(/[,;]/).forEach(function(x){x=x.trim();var k=x.toLowerCase();if(x&&!seen[k]){seen[k]=1;out.push(x);}});return out.join(', ');}
+  var interpTxt=(autoG&&autoG.interp)||'';
+  var clauseDetailTxt=(autoG&&autoG.clauseDetail)||'';
+  var ccTxt=richer(guide&&guide.cc,autoG&&autoG.cc);
+  var ncTxt=richer(guide&&guide.nc,autoG&&autoG.nc);
+  var dTxt=mergeDocs(guide&&guide.d,autoG&&autoG.d);
+  if(interpTxt){var is=document.createElement('div');is.className='guide-popup-section';is.style.cssText='background:#eef6ff;border-left:4px solid #2b6cb0;padding:10px 12px;margin-bottom:10px;border-radius:6px';
+    is.innerHTML='<h5 style="color:#1a365d">🎯 จุดประสงค์ของคำถาม — ผู้ตรวจต้องพิสูจน์อะไร</h5><p>'+escHtml(interpTxt)+'</p>';body.appendChild(is);}
+  if(clauseDetailTxt){var cs=document.createElement('div');cs.className='guide-popup-section cl-sec';
+    cs.innerHTML='<h5>📖 ข้อกำหนดอ้างอิง</h5><p>'+escHtml(clauseDetailTxt).replace(/\n/g,'<br>')+'</p>';body.appendChild(cs);}
+  if(ccTxt){var s=document.createElement('div');s.className='guide-popup-section cc-sec';
+    s.innerHTML='<h5>✅ ถือว่า "ผ่าน" (Conformity) เมื่อ</h5><p>'+escHtml(ccTxt).replace(/\n/g,'<br>')+'</p>';body.appendChild(s);}
+  if(ncTxt){var s=document.createElement('div');s.className='guide-popup-section nc-sec';
+    s.innerHTML='<h5>❌ ถือว่า "ไม่ผ่าน" (Non-Conformity) เมื่อ</h5><p>'+escHtml(ncTxt).replace(/\n/g,'<br>')+'</p>';body.appendChild(s);}
+  if(dTxt){var s=document.createElement('div');s.className='guide-popup-section d-sec';
+    s.innerHTML='<h5>📄 หลักฐาน/เอกสารที่ควรขอดู</h5><p>'+escHtml(dTxt)+'</p>';body.appendChild(s);}
+  if(!interpTxt&&!ccTxt&&!ncTxt&&!dTxt){var ns=document.createElement('div');ns.className='guide-popup-section d-sec';
+    ns.innerHTML='<h5>ℹ️ หมายเหตุ</h5><p>ไม่พบข้อมูล Guideline สำหรับคำถามนี้</p>';body.appendChild(ns);}
   popup.appendChild(body);overlay.appendChild(popup);document.body.appendChild(overlay);
 }
 function showClausePopup(clauseText){
@@ -10834,18 +10833,21 @@ function doPrint(){
 var IQA_BRAIN={
   // word_pattern_analysis.positive_indicators (Brain v1) — each counts once
   positive:[
-    {re:/ตรวจพบ|ตรวจสอบพบ|เปิดดู|เรียกดู|ตรวจดู/,s:5},
+    {re:/ตรวจพบ|ตรวจสอบพบ|ตรวจสอบ|เปิดดู|เรียกดู|ตรวจดู|ทวนสอบ|ตรวจประเมิน/,s:5},
     {re:/สัมภาษณ์|สอบถาม/,s:5},
-    {re:/สังเกต(การณ์)?/,s:5},
+    {re:/สังเกต(การณ์)?|เดินสำรวจ/,s:5},
     {re:/สุ่มตรวจ|สุ่มสอบถาม|สุ่มสัมภาษณ์|สุ่ม\s*\d/,s:8},
     {re:/รหัส\s*[A-Za-z]|[A-Z]{2,}[-–][A-Z0-9]/,s:5},      // document code
     {re:/Rev\.?\s*\d|เวอร์ชัน|ฉบับที่|Rev\.\d/,s:3},
     {re:/\d{1,2}\/\d{1,2}\/\d{2,4}|ลงวันที่|เมื่อวันที่|เมื่อ\s*\d/,s:3},
     {re:/คุณ[ก-๙]/,s:5},                                        // named person
+    {re:/MD|GM|QMR|ผู้จัดการ|กรรมการ|หัวหน้า|ประธาน|ผู้อำนวยการ/,s:3}, // executive role
     {re:/ไม่สอดคล้องกับ|ขัดแย้งกับ|ไม่เป็นไปตาม/,s:5},
     {re:/ข้อ\s*\d+\.\d|มาตรา\s*\d/,s:5},                        // clause number
-    {re:/จำนวน\s*\d|\d+\s*(คน|จุด|ราย|รายการ|ฉบับ|ครั้ง|ตัว|กระสอบ|lot|Lot|entry)/,s:3},
+    {re:/จำนวน\s*\d|\d+\s*(คน|จุด|ราย|รายการ|ฉบับ|ครั้ง|ตัว|กระสอบ|lot|Lot|entry|ประเด็น|ชุด|ชิ้น|ใบ|ล้าน|บาท)/,s:3},
     {re:/\d+(\.\d+)?\s*%|ร้อยละ/,s:3},
+    {re:/ปี\s*\d{4}|พ\.?ศ\.?\s*\d{4}|ไตรมาส\s*\d/,s:3},        // year/time reference
+    {re:/ยืนยัน.{0,20}(ตรง|สอดคล้อง)|ตรงกับ|cross[\s-]*check|triangulation/i,s:3}, // cross-verification
     {re:/ถ่ายภาพ|Photo\s*Ref|รูปประกอบ|ภาพประกอบ/i,s:5}
   ],
   // word_pattern_analysis.negative_indicators (Brain v1) + common_mistakes ERR-002
@@ -10899,6 +10901,9 @@ function classifyContentSignal(s,ctx,flags){
   if(IQA_BRAIN.yesno.indexOf(s)>=0||s.length<8)return 'EMPTY_OR_VAGUE';
   if(IQA_BRAIN.speculation.test(s)&&!flags.evidenceVerb)return 'EMPTY_OR_VAGUE';
   if(/^มี\s|^ไม่มี\s|^ทำแล้ว|อยู่แล้ว$|ครบถ้วน$|^พบ$/.test(s)&&s.length<25&&!flags.hasEvidence)return 'EMPTY_OR_VAGUE';
+  // Surface-level conformity: generic positive word but no audit methodology = insufficient
+  // (catches "ผ่านวิทยุ" false-positive, "พนักงานบอกว่ามี...ปกติ" hearsay patterns)
+  if(flags.conformity&&!flags.evidenceVerb&&!flags.hasEvidence&&s.length<60)return 'EMPTY_OR_VAGUE';
   // IMPROVEMENT_OPPORTUNITY: positive base + recommendation cue (no deviation)
   if(IQA_BRAIN.improvement.test(s)&&!flags.deficiency)return 'IMPROVEMENT_OPPORTUNITY';
   if(flags.conformity&&(flags.has(flags.V.recommend)||/แนะนำ|ควร(เพิ่ม|ปรับ|พิจารณา)/.test(s))&&!flags.deficiency)return 'IMPROVEMENT_OPPORTUNITY';
@@ -10955,12 +10960,12 @@ function evaluateAuditSentence(status,text,ctx){
     actions:['สุ่มตรวจ','ตรวจสอบ','เดินสำรวจ','จากการตรวจ','เรียกดู','สังเกต','สัมภาษณ์','สอบถาม','ตรวจดู','ทวนสอบ','เปิดดู','ตรวจประเมิน'],
     evidences:['บันทึก','รายงาน','เอกสาร','SOP','WI','หลักฐาน','ใบรับรอง','ทะเบียน','แบบฟอร์ม','คู่มือ','นโยบาย','ระเบียบ','โปรแกรม','record','log','checklist','อุณหภูมิ','สอบเทียบ','calibration'],
     places:['ไลน์ผลิต','ไลน์','แผนก','พื้นที่','จุด','กะ','สถานี','โซน','คลัง','ห้อง','line','area','บริเวณ'],
-    positives:['สอดคล้อง','ถูกต้อง','ตามเกณฑ์','เรียบร้อย','ครบถ้วน','ปฏิบัติได้','เป็นไปตาม','ผ่านเกณฑ์','ปกติ','ปลอดภัย','ควบคุมได้','ผ่าน'],
+    positives:['สอดคล้อง','ถูกต้อง','ตามเกณฑ์','เรียบร้อย','ครบถ้วน','ปฏิบัติได้','เป็นไปตาม','ผ่านเกณฑ์','ปกติ','ปลอดภัย','ควบคุมได้','ผ่าน','ตรงกับ'],
     praise:['ดีมาก','สมบูรณ์แบบ','ไม่มีที่ติ','ทุกประการ','ยอดเยี่ยม','ดีเยี่ยม','เป็นเลิศ','สมบูรณ์'],
     negations:['ไม่พบ','ไม่เจอ','ไม่มี'],
     goodThings:['เอกสาร','นโยบาย','หลักฐาน','บันทึก','แบบฟอร์ม','ระเบียบ','ขั้นตอน','คู่มือ','แผน','โปรแกรม','ใบรับรอง','รายงาน','ทะเบียน','มาตรฐาน','ระบบ','เครื่องมือ','อุปกรณ์'],
-    badThings:['สิ่งผิดปกติ','ความปนเปื้อน','การปนเปื้อน','สิ่งปนเปื้อน','ข้อบกพร่อง','สิ่งเจือปน','สิ่งแปลกปลอม','ขยะ','ความเสียหาย','ความผิดปกติ','ปัญหา','สนิม','เชื้อรา','แมลง','สัตว์พาหะ','คราบ','สิ่งสกปรก'],
-    deficiency:['ขาด','ชำรุด','เสียหาย','ไม่เข้าใจ','เกินเกณฑ์','ไม่ได้ปฏิบัติ','ไม่ครบ','ไม่ถูกต้อง','หมดอายุ','ไม่สอดคล้อง','บกพร่อง','ไม่เป็นไปตาม','สูญหาย','พัง','ละเลย','ไม่สวม','ไม่ได้ทำ','ล้มเหลว','หาย','ไม่สามารถ','ไม่ได้','ไม่เพียงพอ','ไม่ตรง','ไม่ผ่าน','ไม่ครอบคลุม','ไม่เหมาะสม','ไม่ทัน','ไม่ปลอดภัย','ไม่เป็นปัจจุบัน'],
+    badThings:['สิ่งผิดปกติ','ความปนเปื้อน','การปนเปื้อน','สิ่งปนเปื้อน','ข้อบกพร่อง','สิ่งเจือปน','สิ่งแปลกปลอม','ขยะ','ความเสียหาย','ความผิดปกติ','ปัญหา','สนิม','เชื้อรา','แมลง','สัตว์พาหะ','คราบ','สิ่งสกปรก','น้ำขัง','เศษ','ฝุ่น','รอยแตก','รอยร้าว','รั่ว','รั่วซึม','ตกหล่น','ชำรุด','เสื่อมสภาพ','หมดอายุ','บกพร่อง'],
+    deficiency:['ขาด','ชำรุด','เสียหาย','ไม่เข้าใจ','เกินเกณฑ์','ไม่ได้ปฏิบัติ','ไม่ครบ','ไม่ถูกต้อง','หมดอายุ','ไม่สอดคล้อง','บกพร่อง','ไม่เป็นไปตาม','สูญหาย','พัง','ละเลย','ไม่สวม','ไม่ได้ทำ','ล้มเหลว','หาย','ไม่สามารถ','ไม่ได้','ไม่เพียงพอ','ไม่ตรง','ไม่ผ่าน','ไม่ครอบคลุม','ไม่เหมาะสม','ไม่ทัน','ไม่ปลอดภัย','ไม่เป็นปัจจุบัน','เกินกำหนด','เก่าเกิน','ไม่ทวนสอบ','ไม่สอบเทียบ','ไม่ดำเนินการ','เลยกำหนด','เลยรอบ','ไม่อบรม','ไม่บันทึก','ไม่จัดทำ','ไม่ติดตาม','ไม่แก้ไข','ไม่ปฏิบัติตาม'],
     recommend:['ควร','แนะนำ','เสนอ','พิจารณา','เพื่อป้องกัน','แนวโน้ม','ป้องกัน','น่าจะ','อาจ','เพิ่มความถี่','ปริ่ม'],
     stdRefs:['ISO','FSSC','GHP','HACCP','GMP','PRP','OPRP','CCP','allergen','สารก่อภูมิแพ้','ข้อกำหนด','clause','มาตรฐาน','19011','22000','9001','22002']
   };
@@ -10968,12 +10973,17 @@ function evaluateAuditSentence(status,text,ctx){
   var negGoodRe=new RegExp('(ไม่พบ|ไม่เจอ|ไม่มี)\\s*(?:การ[ก-๙]{2,15}|'+V.goodThings.join('|')+')');
   var negBadRe=new RegExp('(ไม่พบ|ไม่เจอ|ไม่มี)\\s*(?:'+V.badThings.join('|')+')');
   var posBadRe=new RegExp('(พบ|เจอ|มี|ตรวจพบ|สังเกตพบ)\\s*(?:'+V.badThings.join('|')+')');
-  var broadNegRe=/ไม่(ได้|สามารถ|มี|พบ|เจอ|ครบ|ถูก|เป็น|ตรง|ผ่าน|เพียงพอ|ครอบคลุม|เหมาะ|ทัน|ปลอดภัย|เคย|ระบุ|กำหนด|ชัดเจน)/;
+  var broadNegRe=/ไม่(ได้|สามารถ|มี|พบ|เจอ|ครบ|ถูก|เป็น|ตรง|ผ่าน|เพียงพอ|ครอบคลุม|เหมาะ|ทัน|ปลอดภัย|เคย|ระบุ|กำหนด|ชัดเจน|ทวนสอบ|สอบเทียบ|ดำเนินการ|ปฏิบัติ|จัดทำ|บันทึก|ตรวจ|อบรม|แก้ไข|ติดตาม|ควบคุม|ดูแล|จัดเก็บ|ทบทวน|อัปเดต|ปรับปรุง)/;
   var defc=has(V.deficiency)||negGoodRe.test(s)||posBadRe.test(s)||broadNegRe.test(s);
-  // A C report usually states conformity by DESCRIBING found evidence ("ตรวจพบเอกสาร...")
-  // rather than literally writing "สอดคล้อง". Treat evidence-found + no-deficiency as
-  // conformity direction (Brain: requirement met + objective evidence present = C).
-  var evidenceVerb=/ตรวจพบ|พบว่า|สุ่มตรวจ|ตรวจสอบพบ|เปิดดู|เรียกดู|สังเกต|สัมภาษณ์|ทดสอบ/.test(s);
+  // Narrative context: long C findings describing HOW the org handled past issues
+  // contain deviation words in narrative, not as current deviations — suppress defc for scoring
+  if(status==='C'&&defc&&s.length>=80){
+    var ncNarr=/ยกตัวอย่าง|กรณี(จริง)?|เมื่อ(มี|เกิด)|ที่ผ่านมา|ในอดีต|ปี\s*\d{4}|พ\.?ศ\.?\s*\d{4}|เล่า(ว่า|ให้ฟัง)|อธิบาย(ว่า|ได้)|ระบุว่า/.test(s);
+    var ncConf=/ยืนยัน|สอดคล้อง|ตรงกับ|ตรงกัน/.test(s);
+    var ncEvid=/เอกสาร|บันทึก|รหัส|Rev|สัมภาษณ์|สังเกต|ตรวจพบ|สุ่มตรวจ|ตรวจสอบ/.test(s);
+    if(ncNarr&&ncConf&&ncEvid)defc=false;
+  }
+  var evidenceVerb=/ตรวจพบ|พบว่า|สุ่มตรวจ|ตรวจสอบ|เปิดดู|เรียกดู|สังเกต|สัมภาษณ์|ทดสอบ|เดินสำรวจ|จากการตรวจ|สอบถาม|ตรวจดู|ทวนสอบ|ตรวจประเมิน/.test(s);
   var conf=negBadRe.test(s)||(has(V.positives)&&!defc)||(evidenceVerb&&has(V.evidences)&&!defc);
   var praise=has(V.praise)||(has(V.positives)&&/ทุกประการ|ทุกอย่าง/.test(s)&&!defc);
   // ----- Layer 4a: auditor_logic_score (semantic direction vs status) -----
@@ -11007,18 +11017,21 @@ function evaluateAuditSentence(status,text,ctx){
   if(negPts<=-10)wq=Math.min(wq,2);                       // opinion/speculation language
   if(negPts<=-20)wq=Math.min(wq,1);                       // "didn't actually check"
   // ----- Element 2: requirement_link (clause/standard reference) -----
-  var hasStd=/ISO|FSSC|GHP|HACCP|GMP|PRP|OPRP|CCP|Codex|มอก|19011|22000|9001|22002|allergen|สารก่อภูมิแพ้/i.test(s);
-  var hasClauseNum=/ข้อ\s*\d+\.\d|\b\d+\.\d+(\.\d+)?\b|มาตรา\s*\d/.test(s);
-  var hasGeneric=/ข้อกำหนด|มาตรฐาน|เกณฑ์|requirement|clause|SOP|WI|แผน|Plan/i.test(s);
+  var remarkText=(ctx.remark||'').trim();
+  var sForClause=remarkText?s+' '+remarkText:s;
+  var hasStd=/ISO|FSSC|GHP|HACCP|GMP|PRP|OPRP|CCP|Codex|มอก|FSMS|QMS|EMS|19011|22000|9001|22002|allergen|สารก่อภูมิแพ้/i.test(sForClause);
+  var hasClauseNum=/ข้อ\s*\d+\.\d|\b\d+\.\d+(\.\d+)?\b|มาตรา\s*\d/.test(sForClause);
+  var hasDocCode=/[A-Z]{2,}[-–]\d/.test(sForClause);
+  var hasGeneric=/ข้อกำหนด|มาตรฐาน|เกณฑ์|requirement|clause|SOP|WI|แผน|Plan|Register|Record|Matrix|Schedule|Manual|Procedure/i.test(sForClause);
   var rl;
-  if(hasStd&&hasClauseNum)rl=5;else if(hasStd||hasClauseNum)rl=4;else if(hasGeneric)rl=3;else rl=2;
+  if(hasStd&&hasClauseNum)rl=5;else if(hasStd||hasClauseNum||hasDocCode)rl=4;else if(hasGeneric)rl=3;else rl=2;
   var guideTxt=((ctx.guide&&(ctx.guide.cc||'')+' '+(ctx.guide&&ctx.guide.nc||'')+' '+(ctx.guide&&ctx.guide.d||''))||'');
   if(guideTxt.trim()){
     var toks=s.match(/[ก-๙a-zA-Z]{4,}/g)||[];
     if(toks.some(function(t){return guideTxt.indexOf(t)>=0;}))rl=Math.min(5,rl+1);
   }
   // ERR-003: an NC with no clause/standard reference at all is incomplete
-  if(status==='NC'&&!hasStd&&!hasClauseNum&&!/ไม่สอดคล้อง|ไม่เป็นไปตาม/.test(s))rl=Math.min(rl,2);
+  if(status==='NC'&&!hasStd&&!hasClauseNum&&!/ไม่สอดคล้อง|ไม่เป็นไปตาม/.test(sForClause))rl=Math.min(rl,2);
   if(logic===0)rl=Math.min(rl,1);
   rl=Math.max(0,Math.min(5,rl));
   // ----- Element 4: completeness (Brain v2 minimum-elements per C/NC/B) -----
@@ -11027,7 +11040,7 @@ function evaluateAuditSentence(status,text,ctx){
     var cDoc=/เอกสาร|บันทึก|record|log|ทะเบียน|แบบฟอร์ม|ใบ|SOP|WI|รายงาน|คู่มือ|แผน|Plan|รหัส|Matrix|Schedule|List/i.test(s);
     var cWho=/สัมภาษณ์|สอบถาม|สังเกต|คุณ[ก-๙]|พนักงาน|หัวหน้า|ผู้จัดการ|QMR|QC|GM|ช่าง/.test(s);
     var cRes=/\d/.test(s)||/พบว่า|ผลปกติ|อยู่ในเกณฑ์|ครบถ้วน|ครบทุก/.test(s);
-    var cConf=/สอดคล้อง|เป็นไปตาม|ตามเกณฑ์|ตาม\s*SOP|ตามข้อกำหนด|ตามแผน|ผ่านเกณฑ์|cross[\s-]*check|ตรงกัน|ยืนยัน|triangulation|verify/i.test(s);
+    var cConf=/สอดคล้อง|เป็นไปตาม|ตามเกณฑ์|ตาม\s*SOP|ตามข้อกำหนด|ตามแผน|ผ่านเกณฑ์|ครบถ้วน|ตรงกับ|cross[\s-]*check|ตรงกัน|ยืนยัน|triangulation|verify/i.test(s);
     if(cDoc)elem++;else missing.push('ชื่อ/รหัสเอกสารหรือบันทึกที่ตรวจ');
     if(cWho)elem++;else missing.push('ผู้ที่สัมภาษณ์/สังเกต (ชื่อ-ตำแหน่ง)');
     if(cRes)elem++;else missing.push('ผลที่พบ (ค่า/จำนวน/สถานะ)');
@@ -11055,7 +11068,7 @@ function evaluateAuditSentence(status,text,ctx){
   var coverage=total>=90?4:total>=70?3:total>=40?2:1; // Prompt.txt coverage_score
   // ===== v3 Coherence Engine — categorical Lead-Auditor verdict (ISO 19011:2018) =====
   // Independently classify the Finding content's direction, then compare with declared.
-  var hasEvidence=ev>=2||/เอกสาร|บันทึก|รหัส|Rev|สัมภาษณ์|สังเกต|ตรวจพบ|สุ่มตรวจ/.test(s);
+  var hasEvidence=ev>=2||/เอกสาร|บันทึก|รหัส|Rev|สัมภาษณ์|สังเกต|ตรวจพบ|สุ่มตรวจ|ตรวจสอบ/.test(s);
   // Negative auditing for C: "ไม่พบ+bad-thing" is conformity, not deviation
   // (Gemini ...208249.txt: short-correct lines must keep logic=100%, never penalize).
   var negativeAuditing=negBadRe.test(s);
@@ -11064,6 +11077,21 @@ function evaluateAuditSentence(status,text,ctx){
   var isHiRisk=IQA_BRAIN.hiRisk.test(s+' '+(ctx.clause?String(ctx.clause):'')+' '+(ctx.guide?(ctx.guide.cc||'')+' '+(ctx.guide.nc||''):''));
   // Mandatory-missing pattern => DEVIATION (escalates B's severity to under_grading_risk)
   if(IQA_BRAIN.mandatoryMissing.test(s))signal='DEVIATION_EVIDENCE';
+  // ===== v5 anti-pattern overrides (calibrated on real audit data 14 depts) =====
+  // AP-03: Auditor-failure-as-NC — "ลืมถาม/ข้ามไป" then ticked NC = INVALID → EMPTY
+  var auditorFail=/ลืมถาม|ลืมไป(เลย)?|ข้ามไป|ไม่ได้ถาม(เรื่อง|ต่อ)?|ไม่ได้ตรวจ|ไม่ได้ขอดู|ขอข้ามก่อน|ยังไม่ได้ตรวจ/.test(s);
+  if(auditorFail)signal='EMPTY_OR_VAGUE';
+  // AP-05: Emotional/blaming with no evidence — override to EMPTY
+  var emotionalNoEvid=/หย่อนยาน|ใช้ไม่ได้เลย|แทบไม่มีระบบ|ดูไม่จริงจัง|แย่\s*(มาก)?|ห่วย|ไม่เอาไหน/.test(s);
+  if(emotionalNoEvid&&!hasEvidence)signal='EMPTY_OR_VAGUE';
+  // v6 Narrative context: long C findings describing HOW the org handled a situation
+  // contain deviation words (ปัญหา/ขาดแคลน/ไม่ตรงสเปค) in narrative context,
+  // not as current deviations. Requires: narrative framing + confirmation + evidence.
+  if(status==='C'&&signal==='DEVIATION_EVIDENCE'&&s.length>=80){
+    var narrativeCtx=/ยกตัวอย่าง|กรณี(จริง)?|เมื่อ(มี|เกิด)|ที่ผ่านมา|ในอดีต|ปี\s*\d{4}|พ\.?ศ\.?\s*\d{4}|เล่า(ว่า|ให้ฟัง)|อธิบาย(ว่า|ได้)|ระบุว่า/.test(s);
+    var hasConfirm=/ยืนยัน|สอดคล้อง|ตรงกับ|ตรงกัน/.test(s);
+    if(narrativeCtx&&hasConfirm&&hasEvidence)signal='POSITIVE_EVIDENCE';
+  }
   // ===== v4 awareness_competence_logic =====
   // For ASK_FOR_RESPONSE_AWARENESS questions, the interview answer IS valid evidence:
   //   explained -> POSITIVE_EVIDENCE (C), couldn't explain -> DEVIATION_EVIDENCE (NC).
@@ -11080,13 +11108,19 @@ function evaluateAuditSentence(status,text,ctx){
     if(!hasIdentity||!hasSubstance){awarenessForm=false;awarenessThin=!hasSubstance;}
   }
   var coh=coherenceMatrix(status,signal,isHiRisk);
+  // Score adjustment: EMPTY_OR_VAGUE means content too thin — cap logic and wq, recalc total
+  if(signal==='EMPTY_OR_VAGUE'){
+    logic=Math.min(logic,1);wq=Math.min(wq,2);
+    total=Math.round((ev/5*W.ev + rl/5*W.rl + wq/5*W.wq + completeness*W.cp + logic/5*W.lg)*100);
+    total=Math.max(0,Math.min(100,total));
+  }
   // ----- Verdict mapping (kept Perfect/Acceptable/Faulty contract for the UI) -----
   // Faulty (blocks Pass) ONLY when label CONTRADICTS content (MISMATCH).
   // REVIEW = soft suggestion (Acceptable). INSUFFICIENT = Acceptable + strong coach.
   // Vague writing is never blocked — fair to auditors whose pay depends on the score.
   var verdict,savable;
   var strongB=status==='B'&&signal==='IMPROVEMENT_OPPORTUNITY'&&L>=20&&/ป้องกัน|ความเสี่ยง|แนวโน้ม|เพื่อ/.test(s);
-  if(coh.match==='MISMATCH'){verdict='Faulty';savable=false;}
+  if(coh.match==='MISMATCH'){verdict='Faulty';savable=true;}
   else if(coh.match==='MATCH'&&awarenessForm&&((total>=82&&ev>=3)||strongB)){verdict='Perfect';savable=true;}
   else{verdict='Acceptable';savable=true;}
   // ----- Coaching (โทนพี่สอนน้อง ตาม v3 ai_system_prompt) -----
@@ -11097,19 +11131,21 @@ function evaluateAuditSentence(status,text,ctx){
   if(verdict==='Perfect'){
     coaching='เขียนได้ระดับ Lead Auditor — หลักฐานครบ ผลตรงกับเนื้อหา (คะแนน '+total+'/100 · coverage '+coverage+'/4)';
   }else if(coh.match==='MISMATCH'){
-    // Label contradicts content — v3 worked_examples templates
+    // Content and chosen result read differently. Per user policy we do NOT tell the
+    // auditor to switch C↔NC↔B — the classification is their professional judgment.
+    // We only flag the tension and coach them to make the WRITING support their result.
     if(status==='C'&&coh.should_be==='NC')
-      coaching='หลักฐานที่คุณบันทึกชี้ชัดว่าเป็น NC ครับ ลองเปลี่ยนผลจาก C เป็น NC แล้วเพิ่มการอ้างอิงข้อกำหนด'+clauseHint+' ที่ถูกละเมิด';
+      coaching='เนื้อหาที่บันทึกมีลักษณะของการเบี่ยงเบน/ข้อบกพร่องปนอยู่ครับ — หากยืนยันผลเป็น C โปรดเพิ่มหลักฐานเชิงประจักษ์ที่แสดงความสอดคล้องให้ชัดเจน (เอกสาร/บันทึก/สิ่งที่สังเกตพบ) เพื่อให้การบรรยายสนับสนุนผลที่เลือก';
     else if(status==='NC'&&coh.should_be==='C')
-      coaching='เนื้อหาบรรยายว่าสอดคล้องล้วนๆ ไม่มีการเบี่ยงเบนใดๆ น่าจะติ๊กผิดช่อง — เปลี่ยนผลจาก NC เป็น C ครับ';
+      coaching='เนื้อหาบรรยายในเชิงสอดคล้องเป็นหลัก ยังไม่เห็นการเบี่ยงเบนชัดเจน — หากยืนยันผลเป็น NC โปรดระบุสิ่งที่พบว่าไม่เป็นไปตามข้อกำหนด และอ้างอิงข้อกำหนด'+clauseHint+' ที่เกี่ยวข้องให้ครบถ้วน';
     else if(status==='NC'&&coh.should_be==='B')
-      coaching='ยังไม่มีข้อกำหนด (shall) ที่ถูกละเมิดชัดเจน เป็นเพียงข้อเสนอแนะปรับปรุง การออก NC จะสร้างภาระ CAR เกินจำเป็น ลองเปลี่ยนเป็น B จะเหมาะกว่าครับ';
+      coaching='เนื้อหายังไม่ปรากฏข้อกำหนด (shall) ที่ถูกละเมิดชัดเจน — หากยืนยันผลเป็น NC โปรดระบุข้อกำหนด'+clauseHint+' ที่ไม่สอดคล้องและหลักฐานประกอบให้ชัดเจน';
     else if(status==='B'&&coh.should_be==='NC'){
-      coaching=(isHiRisk?'⚠️ ระวัง under-grading: ':'')+
-        'เนื้อหาบรรยายการละเมิดข้อกำหนดบังคับจริง'+(isHiRisk?' โดยเฉพาะเรื่อง Food Safety':'')+
-        ' ควรเป็น NC ไม่ใช่ B เพื่อให้มี CAR ติดตามแก้ไข (อ้างข้อกำหนด'+clauseHint+' ประกอบ)';
+      coaching=(isHiRisk?'⚠️ ':'')+
+        'เนื้อหาบรรยายการละเมิดข้อกำหนดบังคับ'+(isHiRisk?' (Food Safety)':'')+
+        ' — โปรดตรวจสอบว่าหลักฐานและการอ้างอิงข้อกำหนด'+clauseHint+' ครบถ้วนเพียงพอต่อผลที่เลือก';
     }
-    else coaching='ผลที่เลือกขัดกับเนื้อหา — ทบทวนว่าควรเป็น '+(coh.should_be||'C/NC/B ที่ตรงกับหลักฐาน');
+    else coaching='ผลที่เลือกกับเนื้อหาที่บันทึกดูจะไม่สอดคล้องกัน — โปรดทบทวนให้การบรรยายหลักฐานสนับสนุนผลที่เลือกอย่างชัดเจน';
   }else if(coh.match==='INSUFFICIENT_EVIDENCE'){
     // Not blocked, but ISO 19011 A.5/A.18 says evidence is too thin
     if(status==='C')
@@ -11121,10 +11157,10 @@ function evaluateAuditSentence(status,text,ctx){
     if(miss3)coaching+=' (ขาด: '+miss3+')';
   }else if(coh.match==='REVIEW'){
     if(status==='B'&&coh.should_be==='C')
-      coaching='เนื้อหาเป็นการสอดคล้องล้วนๆ ไม่มีข้อเสนอแนะ — ถ้าไม่มีอะไรให้ปรับปรุงจริง ควรเป็น C ครับ';
+      coaching='เนื้อหาเป็นการบรรยายความสอดคล้องเป็นหลัก ยังไม่เห็นข้อเสนอแนะปรับปรุงที่ชัดเจน — หากตั้งใจให้เป็นข้อสังเกต (B) โปรดเพิ่มจุดที่ควรปรับและเหตุผลรองรับ';
     else if(status==='C'&&coh.should_be==='B')
-      coaching='สอดคล้องแล้วและมีข้อเสนอแนะปรับปรุงด้วย — ถ้าข้อเสนอนั้นจำเป็น อาจเป็น B จะเหมาะกว่า; ถ้าเป็นแค่ note ก็คง C ได้';
-    else coaching='ขอทบทวนผลอีกครั้งครับ — '+(miss3||'ลองดูว่าตรงกับ '+coh.should_be+' มากกว่าหรือไม่');
+      coaching='เนื้อหามีทั้งความสอดคล้องและข้อเสนอแนะปรับปรุง — หากต้องการให้ข้อเสนอแนะนั้นถูกติดตาม โปรดระบุจุดที่ควรปรับและเหตุผลให้ชัดเจน';
+    else coaching='โปรดทบทวนให้เนื้อหาสนับสนุนผลที่เลือกให้ชัดเจน'+(miss3?' — '+miss3:'');
   }else{ // MATCH but not Perfect → Acceptable
     coaching='บันทึกได้ครับ ผลตรงกับเนื้อหา (คะแนน '+total+'/100) — '+(miss3?'จะโปรขึ้นหากเพิ่ม: '+miss3:'เพิ่มหลักฐานเชิงปริมาณจะดียิ่งขึ้น');
   }
@@ -11246,9 +11282,9 @@ function doAuditReview(){
     }
     // D) Lead-Auditor 4-layer evaluation (spec in /Gemini folder)
     //    Perfect → จุดแข็ง · Faulty → ต้องปรับปรุง · Acceptable → ข้อเสนอแนะ (ไม่บล็อก)
-    var ev=evaluateAuditSentence(selType,trimmed,{clause:q.c,guide:guide,question:q.q});
+    var ev=evaluateAuditSentence(selType,trimmed,{clause:q.c,guide:guide,question:q.q,remark:remark});
     if(ev.verdict==='Perfect'){qualityGoods.push({n:q.n,type:selType,msg:ev.message,score:ev.scores.total_percentage});}
-    else if(ev.verdict==='Faulty'){qualityIssues.push({n:q.n,type:selType,msg:ev.message,score:ev.scores.total_percentage});}
+    else if(ev.verdict==='Faulty'){writingSuggestions.push({n:q.n,type:selType,coaching:ev.coaching,suggested:ev.suggested||'',score:ev.scores.total_percentage});}
     else if(ev.suggested){writingSuggestions.push({n:q.n,type:selType,coaching:ev.coaching,suggested:ev.suggested,score:ev.scores.total_percentage});}
     // D1) FSSC Annex2 §3: C summary must not be oversimplified (supplementary)
     if(hasC){
@@ -11299,13 +11335,15 @@ function doAuditReview(){
   if(completionPct===100&&auditScore>=75&&issues.length===0&&!hasInformal) status='Pass';
   else if(completionPct===100&&auditScore>=50&&issues.length===0) status='Needs_Revision';
   var strength=[];
-  qualityGoods.forEach(function(g){strength.push('ข้อ '+g.n+' ['+g.type+']: '+g.msg);});
   if(completionPct===100)strength.push('กรอกข้อมูลครบทุกข้อ (100%)');
+  if(qualityGoods.length>0)strength.push('มีข้อที่เขียนได้ดี '+qualityGoods.length+' ข้อ จากทั้งหมด '+totalQuestions+' ข้อ');
+  var perfectCount=qualityGoods.filter(function(g){return g.score&&g.score>=82;}).length;
+  if(perfectCount>0)strength.push('ระดับ Lead Auditor '+perfectCount+' ข้อ (คะแนน 82+)');
+  if(ncCount>0)strength.push('ออก NC '+ncCount+' ข้อ — แสดงความกล้าในการชี้ข้อบกพร่อง');
   var weakness=[];
   if(completionPct<100)weakness.push('กรอกข้อมูลไม่ครบ ('+completionPct+'%)');
   if(qualityIssues.length>0)weakness.push('คุณภาพการเขียนต้องปรับปรุง '+qualityIssues.length+' รายการ');
   if(hasInformal)weakness.push('⛔ ใช้ภาษาไม่เป็นทางการ '+informalCount+' ข้อ (หัก '+informalDeduct+' คะแนน — ห้ามพิมพ์จนกว่าจะแก้ไข)');
-  if(ncCount>0)strength.push('ออก NC '+ncCount+' ข้อ (+'+ncBonus+' คะแนน)');
   var actionRequired=[];
   if(issues.length>0)actionRequired.push('กรอกข้อมูลแบบฟอร์มให้ครบ ('+issues.map(function(i){return i.msg;}).join(', ')+')');
   if(findingIssues.length>0)actionRequired.push('กรอกผลการตรวจที่ยังขาด '+findingIssues.length+' ข้อ');
@@ -11511,150 +11549,187 @@ function normalizeClauseText(raw){
 }
 var AUTO_GUIDE_TOPICS=[
 {kw:['haccp','ccp','oprp','วิเคราะห์อันตราย','hazard','จุดวิกฤต','critical limit','เฝ้าระวัง'],
+interp:'คำถามนี้พิสูจน์ว่าองค์กรวิเคราะห์อันตรายอย่างเป็นระบบและควบคุมจุดวิกฤตได้จริง ไม่ใช่แค่มีแผนบนกระดาษ — ผู้ตรวจควรพิสูจน์ว่า Critical Limit มีที่มาทางวิชาการ การเฝ้าระวังทำตามจริงทุกรอบ และเมื่อค่าหลุดเกณฑ์มีการแก้ไขที่บันทึกไว้',
 cc:'มี HACCP Plan ครบถ้วนทันสมัย มี CCP/OPRP พร้อม Critical Limit ชัดเจน มี Monitoring ครบทุกรอบ มี Corrective Action เมื่อเบี่ยงเบน',
 nc:'ไม่มี/ไม่ครบ HACCP Plan ไม่กำหนด Critical Limit Monitoring ไม่ครบ ไม่มี Corrective Action',
 d:'HACCP Plan, Hazard Analysis Worksheet, CCP Monitoring Records, Corrective Action Records, Validation Records'},
 {kw:['เอกสาร','document','ควบคุมเอกสาร','master list','revision','อนุมัติเอกสาร','บันทึก','record'],
+interp:'หัวใจของข้อนี้คือผู้ปฏิบัติงานต้องใช้เอกสาร "ฉบับล่าสุดที่อนุมัติแล้ว" เสมอ และบันทึกต้องค้นเจอ-อ่านออก-ไม่สูญหาย — ผู้ตรวจควรสุ่มหน้างานว่าฉบับที่ใช้ตรงกับ Master List หรือไม่ และมีเอกสารฉบับเก่าหลงเหลืออยู่หรือเปล่า',
 cc:'มีระบบควบคุมเอกสารชัดเจน เอกสารได้รับอนุมัติ เป็นฉบับปัจจุบัน มี Master List จัดเก็บบันทึกครบถ้วน อ่านออกได้',
 nc:'เอกสารไม่ได้อนุมัติ ใช้ฉบับเก่า ไม่มี Master List บันทึกไม่ครบ/อ่านไม่ออก',
 d:'Document Control Procedure, Master List, Distribution Records, Revision History'},
 {kw:['อบรม','ฝึกอบรม','training','ความสามารถ','competence','สมรรถนะ'],
+interp:'พิสูจน์ว่าพนักงาน "ทำงานเป็น" ไม่ใช่แค่ "เคยเซ็นชื่อเข้าอบรม" — ผู้ตรวจควรเชื่อมโยงแผนอบรมกับความสามารถจริงหน้างานและผลประเมินหลังอบรม โดยเฉพาะตำแหน่งที่กระทบความปลอดภัยอาหาร',
 cc:'มีแผนอบรมประจำปี พนักงานได้รับอบรมตามกำหนด มีบันทึกและใบประเมินผลครบ ประเมิน Competence',
 nc:'ไม่มีแผนอบรม พนักงานไม่ได้อบรมตามกำหนด ไม่มีบันทึก/ผลประเมิน',
 d:'Training Plan, Training Records, ใบประเมินผล, Training Matrix, Competence Records'},
 {kw:['สุขลักษณะ','gmp','ghp','hygiene','ล้างมือ','เครื่องแต่งกาย','สุขอนามัย','ppe','หมวก','เครื่องประดับ'],
+interp:'ตรวจว่าสุขลักษณะส่วนบุคคลถูกบังคับใช้จริงและสม่ำเสมอ ไม่ใช่แค่มีกฎติดผนัง — ผู้ตรวจควรสังเกตพฤติกรรมหน้างาน (การล้างมือ การสวม PPE การสวมเครื่องประดับ) เทียบกับกฎที่กำหนดและบันทึกการตรวจสุขลักษณะ',
 cc:'พนักงานปฏิบัติตามกฎ GMP/GHP สวม PPE ครบ ล้างมือถูกวิธี ไม่สวมเครื่องประดับ ผ่านการตรวจสุขลักษณะ',
 nc:'ไม่ปฏิบัติตามกฎ GMP/GHP ไม่สวม PPE ล้างมือไม่ถูกวิธี สวมเครื่องประดับในพื้นที่ผลิต',
 d:'GMP/GHP Rules, Hygiene Checklist, บันทึกตรวจสุขลักษณะ, WI การล้างมือ'},
 {kw:['ทำความสะอาด','cleaning','sanitation','ล้าง','cip','ฆ่าเชื้อ','sanitize','สุขาภิบาล'],
+interp:'ตรวจว่าการทำความสะอาดมี "ประสิทธิผล" จริง ไม่ใช่แค่ทำครบตามตาราง — ผู้ตรวจควรดูความถี่ที่กำหนด การปฏิบัติจริง และผลพิสูจน์ประสิทธิภาพ (ATP/Swab) ว่าผ่านเกณฑ์ที่ตั้งไว้',
 cc:'มีแผน/ตารางทำความสะอาด ปฏิบัติตามความถี่ที่กำหนด มีบันทึกครบ ตรวจสอบประสิทธิภาพ (ATP/Swab)',
 nc:'ไม่มีแผนทำความสะอาด ไม่ปฏิบัติตามตาราง ไม่มีบันทึก ไม่ตรวจสอบประสิทธิภาพ',
 d:'Cleaning Schedule, Cleaning SOP/WI, บันทึกทำความสะอาด, ATP/Swab Results'},
 {kw:['สัตว์พาหะ','pest','แมลง','หนู','นก','กำจัดสัตว์','มด','แมลงสาบ'],
+interp:'ตรวจว่าระบบควบคุมสัตว์พาหะทำงานและถูกติดตามแนวโน้ม ไม่ใช่แค่มีสัญญาผู้รับเหมา — ผู้ตรวจควรดูแผนผังจุดวาง บันทึกการตรวจตามความถี่ และการวิเคราะห์แนวโน้ม/การจัดการเมื่อพบร่องรอยสัตว์พาหะ',
 cc:'มีสัญญา Pest Control มีแผนผังจุดวางเหยื่อ/กับดัก ตรวจตามความถี่ ไม่พบสัตว์พาหะ มี Trend Analysis',
 nc:'ไม่มีระบบ Pest Control พบสัตว์พาหะในพื้นที่ ไม่มีบันทึก ไม่มีแผนผัง',
 d:'สัญญา Pest Control, แผนผังจุดวาง, บันทึกตรวจ, Trend Analysis Report'},
 {kw:['บำรุงรักษา','maintenance','ซ่อมบำรุง','pm','เครื่องจักร','preventive','อุปกรณ์'],
+interp:'ตรวจว่าเครื่องจักรถูกบำรุงรักษาเชิงป้องกันเพื่อไม่ให้กระทบคุณภาพ/ความปลอดภัยอาหาร — ผู้ตรวจควรเทียบแผน PM กับการปฏิบัติจริง ดูสภาพเครื่อง และการจัดการเมื่อเครื่องชำรุด รวมถึงการป้องกันการปนเปื้อนจากการซ่อม (เช่น สารหล่อลื่น Food Grade)',
 cc:'มีแผน PM ครอบคลุมเครื่องจักรสำคัญ ดำเนินการตามแผน มีบันทึกครบ อะไหล่พร้อม สภาพเครื่องดี',
 nc:'ไม่มีแผน PM ไม่ปฏิบัติตามแผน ไม่มีบันทึก เครื่องจักรชำรุดแต่ยังใช้งาน',
 d:'PM Plan, บันทึกซ่อมบำรุง, Work Order, Machine/Equipment List'},
 {kw:['สอบเทียบ','calibration','เครื่องมือวัด','เครื่องชั่ง','เทอร์โมมิเตอร์'],
+interp:'ตรวจว่าเครื่องมือวัดที่ใช้ตัดสินความปลอดภัยอาหาร (อุณหภูมิ น้ำหนัก pH) เชื่อถือได้ — ผู้ตรวจควรดูแผนสอบเทียบ ใบรับรองที่สอบกลับได้ (Traceable) สถานะบนเครื่องมือ และการจัดการย้อนหลังเมื่อพบเครื่องมือคลาดเคลื่อน',
 cc:'มีรายการเครื่องมือวัด สอบเทียบตามแผน ใบรับรองถูกต้อง ติดสติ๊กเกอร์สถานะ ทำ Intermediate Check',
 nc:'ไม่มีแผนสอบเทียบ ดำเนินการไม่ครบ/เกินกำหนด ไม่มีใบรับรอง ไม่ติดสติ๊กเกอร์',
 d:'Calibration List & Plan, ใบรับรองผลสอบเทียบ, Intermediate Check Records'},
 {kw:['อุณหภูมิ','temperature','ห้องเย็น','แช่เย็น','แช่แข็ง','cooling','cold chain'],
+interp:'ตรวจว่าการควบคุมอุณหภูมิ (ห่วงโซ่ความเย็น) ทำได้จริงและต่อเนื่อง ไม่ใช่บันทึกย้อนหลังให้ดูสวย — ผู้ตรวจควรดูบันทึก/Data Logger ว่าค่าอยู่ในเกณฑ์ มีระบบแจ้งเตือน และมีการแก้ไขเมื่อค่าเกินเกณฑ์',
 cc:'บันทึกอุณหภูมิตามความถี่ ค่าอยู่ในเกณฑ์ มีระบบแจ้งเตือน มี Corrective Action เมื่อเกินเกณฑ์',
 nc:'ไม่มีบันทึกอุณหภูมิ ค่าเกินเกณฑ์แต่ไม่แก้ไข ไม่มีระบบ Alert ไม่มี Data Logger',
 d:'บันทึกอุณหภูมิ, Data Logger Records, Temperature Alert Records, SOP ควบคุมอุณหภูมิ'},
 {kw:['สอบกลับ','traceability','lot','batch','ย้อนกลับ','ตามรอย','recall','เรียกคืน'],
+interp:'ตรวจว่าองค์กรสอบกลับได้ทั้งไปข้างหน้า (Forward) และย้อนกลับ (Backward) และเรียกคืนได้จริงในเวลาที่กำหนด — ผู้ตรวจควรดูผล Mock Recall ล่าสุด ความสมดุลของ Mass Balance และเวลาที่ใช้จริงเทียบเป้าหมาย',
 cc:'ระบบสอบกลับครอบคลุม วัตถุดิบ→ผลิต→สำเร็จรูป→ลูกค้า มี Mock Recall ประจำปี ทำได้ในเวลาที่กำหนด',
 nc:'ไม่มีระบบสอบกลับ ย้อนรอยไม่ได้ ไม่ทำ Mock Recall หรือทำแล้วไม่ผ่าน',
 d:'Traceability Procedure, Batch/Lot Records, Mass Balance, Mock Recall Report'},
 {kw:['สารก่อภูมิแพ้','allergen','แพ้','กลูเตน','cross-contact','ปนเปื้อนข้าม'],
+interp:'ตรวจว่าองค์กรควบคุมการปนเปื้อนข้ามของสารก่อภูมิแพ้ตั้งแต่รับวัตถุดิบจนถึงฉลาก เพราะเป็นอันตรายต่อผู้บริโภคโดยตรง — ผู้ตรวจควรดูรายการ Allergen มาตรการแยก/ลำดับการผลิต ผล Cleaning Validation และความถูกต้องครบถ้วนของการแสดงข้อมูลบนฉลาก',
 cc:'มีรายการ Allergen มีมาตรการป้องกัน Cross-Contact ติดฉลากถูกต้อง ลำดับผลิตเหมาะสม มี Cleaning Validation',
 nc:'ไม่มีรายการ Allergen ไม่ป้องกัน Cross-Contact ฉลากไม่ถูกต้อง/ไม่ครบ',
 d:'Allergen List/Matrix, Cleaning Validation, Production Schedule, ฉลากสินค้า'},
 {kw:['ตรวจสอบภายใน','internal audit','ตรวจประเมิน','audit plan'],
+interp:'ตรวจว่าการตรวจติดตามภายในครอบคลุมทุกข้อกำหนด เป็นอิสระ และนำไปสู่การแก้ไขจริง ไม่ใช่ทำเป็นพิธี — ผู้ตรวจควรเทียบแผนกับขอบเขตที่ตรวจจริง ดูคุณสมบัติ/ความเป็นอิสระของผู้ตรวจ (ไม่ตรวจงานตนเอง) และการปิด CAR',
 cc:'มีแผน IA ครอบคลุมทุกข้อกำหนด ผู้ตรวจมีคุณสมบัติ/เป็นอิสระ ดำเนินการตามแผน มีรายงานและ Follow-up',
 nc:'ไม่มีแผน IA ดำเนินการไม่ครบ ผู้ตรวจไม่เป็นอิสระ ไม่มีรายงาน/Follow-up',
 d:'Audit Plan/Schedule, Auditor Qualification, Audit Reports, CAR/Follow-up Records'},
 {kw:['ทบทวนโดยฝ่ายบริหาร','management review','ทบทวนฝ่ายบริหาร','ประชุมทบทวน'],
+interp:'ตรวจว่าผู้บริหารทบทวนระบบด้วยข้อมูล Input ที่ครบตามมาตรฐาน และออก Action ที่ติดตามผลได้ ไม่ใช่ประชุมเซ็นชื่อให้ครบ — ผู้ตรวจควรดูว่าวาระครอบคลุม Input ที่ ISO กำหนด (ผลตรวจ ข้อร้องเรียน CAPA ฯลฯ) และสถานะของ Action Items จากครั้งก่อน',
 cc:'ทบทวนฝ่ายบริหารตามกำหนด ครอบคลุม Input/Output ตาม ISO มีรายงาน มี Action Items ติดตามผล',
 nc:'ไม่มีการทบทวน ไม่ครอบคลุม Input ที่กำหนด ไม่มีบันทึก ไม่ติดตาม Action Items',
 d:'Management Review Procedure, รายงานการประชุม, Input Data, Action Items'},
 {kw:['แก้ไข','corrective','car','capa','root cause','สาเหตุ','ป้องกัน'],
+interp:'ตรวจว่าการแก้ไขเจาะถึง "สาเหตุราก" และป้องกันการเกิดซ้ำได้จริง ไม่ใช่แก้เฉพาะหน้าแล้วจบ — ผู้ตรวจควรดูคุณภาพการวิเคราะห์ Root Cause มาตรการป้องกัน และหลักฐานการพิสูจน์ประสิทธิผลก่อนปิด CAR',
 cc:'มีระบบ CAPA ชัดเจน วิเคราะห์สาเหตุรากชัดเจน กำหนดมาตรการแก้ไข/ป้องกัน ติดตามประสิทธิผล ปิด CAR ตามกำหนด',
 nc:'ไม่มีระบบ CAPA วิเคราะห์สาเหตุไม่เพียงพอ ไม่มีมาตรการป้องกัน ไม่ปิด CAR ตามกำหนด',
 d:'CAPA Procedure, CAR Form, Root Cause Analysis, Effectiveness Review'},
 {kw:['ซัพพลายเออร์','supplier','ผู้ขาย','จัดซื้อ','purchasing','approved supplier','ประเมินผู้ขาย'],
+interp:'ตรวจว่าองค์กรคัดเลือกและเฝ้าระวังผู้ขายที่กระทบความปลอดภัยอาหาร เพราะอันตรายอาจเข้ามาทางวัตถุดิบ — ผู้ตรวจควรดูเกณฑ์อนุมัติ การมี Approved Supplier List การเรียก COA และการประเมินซ้ำตามผลงานจริง (ไม่ใช่ขึ้นทะเบียนครั้งเดียวจบ)',
 cc:'มีเกณฑ์คัดเลือก/ประเมิน มี Approved Supplier List มี COA/ใบรับรอง ประเมินซ้ำตามกำหนด',
 nc:'ไม่มีเกณฑ์คัดเลือก ใช้ Supplier นอก ASL ไม่มี COA ไม่ประเมินซ้ำ',
 d:'Supplier Approval Procedure, Approved Supplier List, COA, Evaluation Records'},
 {kw:['ข้อร้องเรียน','complaint','ร้องเรียน','ลูกค้า','customer feedback'],
+interp:'ตรวจว่าองค์กรรับ-สอบสวน-ตอบกลับข้อร้องเรียน และใช้ข้อมูลนั้นป้องกันการเกิดซ้ำ — ผู้ตรวจควรดู Log การวิเคราะห์สาเหตุ เวลาตอบกลับเทียบเป้า และการวิเคราะห์แนวโน้ม (Trend) เพื่อหาปัญหาเชิงระบบ',
 cc:'มีระบบรับ/จัดการข้อร้องเรียน วิเคราะห์สาเหตุ ตอบกลับภายในกำหนด มี Trend Analysis',
 nc:'ไม่มีระบบจัดการ ไม่วิเคราะห์สาเหตุ ไม่ตอบกลับ ไม่มี Trend Analysis',
 d:'Complaint Procedure, Complaint Log, Investigation Reports, Trend Analysis'},
 {kw:['ฉลาก','labeling','label','วันผลิต','วันหมดอายุ','ส่วนผสม','ingredient'],
+interp:'ตรวจว่าฉลากถูกต้องตามกฎหมายและป้องกันการใช้ฉลากผิดรุ่น โดยเฉพาะข้อมูล Allergen และวันที่ ซึ่งกระทบผู้บริโภคโดยตรง — ผู้ตรวจควรดูการอนุมัติฉลากและ Line Clearance ก่อนเริ่มผลิตเพื่อกันการสลับฉลาก',
 cc:'ฉลากถูกต้องตามกฎหมาย ระบุส่วนผสม Allergen วันผลิต/หมดอายุ ตรวจสอบก่อนใช้',
 nc:'ฉลากไม่ถูกต้อง/ไม่ครบ ไม่ระบุ Allergen วันที่ผิด ใช้ฉลากผิดรุ่น',
 d:'Label Specification, Label Approval, Line Clearance Checklist, Label Change Records'},
 {kw:['สิ่งแปลกปลอม','foreign body','metal detect','เครื่องตรวจจับโลหะ','x-ray','แม่เหล็ก','กรอง','sieve'],
+interp:'ตรวจว่ามีมาตรการป้องกัน/ดักจับสิ่งแปลกปลอมที่ทำงานได้จริง — ผู้ตรวจควรดูการทดสอบเครื่อง (Metal Detector/X-ray) ด้วยชิ้นทดสอบตามความถี่ บันทึกผล และวิธีจัดการของที่ถูก Reject ว่าไม่ย้อนกลับเข้าสายการผลิต',
 cc:'มีมาตรการป้องกันสิ่งแปลกปลอม Metal Detector/X-ray สอบเทียบ/ทดสอบตามกำหนด บันทึกครบ',
 nc:'ไม่มีมาตรการ เครื่องไม่ได้สอบเทียบ/ทดสอบ บันทึกไม่ครบ ไม่มี Reject Protocol',
 d:'Foreign Body Control Procedure, Metal Detector Test Records, Reject/Rework Records'},
 {kw:['น้ำ','water','ไอน้ำ','steam','อากาศอัด','compressed air','คุณภาพน้ำ'],
+interp:'ตรวจว่าน้ำ/ไอน้ำ/อากาศอัดที่สัมผัสอาหารหรือพื้นผิวสัมผัสอาหารมีคุณภาพตามเกณฑ์ — ผู้ตรวจควรดูแผนตรวจ ผลวิเคราะห์ (จุลินทรีย์/เคมี) และการป้องกัน Cross-Connection ระหว่างน้ำดื่มกับน้ำที่ไม่ใช้บริโภค',
 cc:'มีแผนตรวจคุณภาพน้ำ ผลตรวจในเกณฑ์ ระบบจ่ายน้ำไม่มี Cross-Connection มีแผนผังท่อน้ำ',
 nc:'ไม่มีแผนตรวจน้ำ ผลเกินเกณฑ์แต่ไม่แก้ไข มี Cross-Connection ไม่มีแผนผัง',
 d:'Water Analysis Plan, ผลตรวจคุณภาพน้ำ, แผนผังระบบน้ำ, Water Treatment Records'},
 {kw:['จัดเก็บ','storage','warehouse','คลัง','fifo','fefo'],
+interp:'ตรวจว่าการจัดเก็บป้องกันการเสื่อมสภาพ/ปนเปื้อน และหมุนเวียนสต๊อกถูกหลัก — ผู้ตรวจควรดูการแยกประเภท (วัตถุดิบ/เคมี/Allergen) การใช้ FIFO/FEFO การไม่วางสินค้ากับพื้น/ชิดผนัง และสภาพแวดล้อมการเก็บ (อุณหภูมิ/ความชื้น)',
 cc:'จัดเก็บเป็นระเบียบ แยกประเภทชัดเจน ใช้ FIFO/FEFO ไม่วางกับพื้น อุณหภูมิ/ความชื้นเหมาะสม',
 nc:'จัดเก็บไม่เป็นระเบียบ ไม่แยกประเภท ไม่ใช้ FIFO/FEFO วางกับพื้น สภาพแวดล้อมไม่เหมาะสม',
 d:'Storage Procedure, Stock Records, FIFO/FEFO Records, บันทึกอุณหภูมิ/ความชื้นคลัง'},
 {kw:['ฉุกเฉิน','emergency','อัคคีภัย','ไฟไหม้','crisis','ซ้อมดับเพลิง','อพยพ'],
+interp:'ตรวจว่าองค์กรพร้อมรับมือเหตุฉุกเฉินได้จริง ไม่ใช่แค่มีแผนในแฟ้ม — ผู้ตรวจควรดูบันทึกการซ้อมตามกำหนด ความเข้าใจหน้าที่ของพนักงาน และความพร้อมใช้งานของอุปกรณ์ (ถังดับเพลิงไม่หมดอายุ ทางออกไม่ถูกกีดขวาง)',
 cc:'มีแผนฉุกเฉินครอบคลุม ซ้อมตามกำหนด พนักงานรู้หน้าที่ อุปกรณ์ดับเพลิงพร้อมใช้',
 nc:'ไม่มีแผนฉุกเฉิน ไม่เคยซ้อม พนักงานไม่รู้หน้าที่ อุปกรณ์หมดอายุ/ไม่พร้อม',
 d:'Emergency Plan, บันทึกการซ้อม, บันทึกตรวจอุปกรณ์ดับเพลิง, Emergency Contact List'},
 {kw:['food defense','food fraud','ปลอมปน','vulnerability','threat','taccp','vaccp'],
+interp:'ตรวจว่าองค์กรประเมินภัยคุกคามโดยเจตนา (Food Defense/TACCP) และการปลอมปนเพื่อผลประโยชน์ (Food Fraud/VACCP) แล้วมีมาตรการป้องกัน — ผู้ตรวจควรดูการประเมินจุดอ่อนและการทบทวนให้ทันสถานการณ์ปัจจุบัน',
 cc:'มี Food Defense Plan/TACCP/VACCP ประเมินภัยคุกคาม มีมาตรการป้องกัน ทบทวนประจำปี',
 nc:'ไม่มี Food Defense Plan ไม่ประเมินภัยคุกคาม ไม่มีมาตรการ ไม่ทบทวน',
 d:'Food Defense Plan, TACCP/VACCP Assessment, Security Measures Records'},
 {kw:['สเปค','specification','คุณลักษณะ','มาตรฐานผลิตภัณฑ์','product spec','สูตร','formula'],
+interp:'ตรวจว่าข้อกำหนดผลิตภัณฑ์/วัตถุดิบครบ ทันสมัย และได้รับการอนุมัติจากผู้เกี่ยวข้อง — ผู้ตรวจควรดูว่า Spec ครอบคลุมคุณลักษณะทางกายภาพ/เคมี/จุลินทรีย์ และตรงกับที่ลูกค้าและกฎหมายต้องการ ใช้เป็นเกณฑ์ตัดสินรับ-ปฏิเสธได้',
 cc:'มี Product Spec ครบทุกรายการ ทันสมัย ลูกค้าอนุมัติ ครอบคลุม Physical/Chemical/Micro',
 nc:'ไม่มี Product Spec ข้อมูลไม่ทันสมัย ลูกค้าไม่อนุมัติ ไม่ครอบคลุม',
 d:'Product Specification, COA, ผลตรวจวิเคราะห์, Customer Approval Records'},
 {kw:['ผลิตภัณฑ์ไม่เป็นไป','nonconforming','ของเสีย','สินค้าเสีย','reject','rework','hold'],
+interp:'ตรวจว่าสินค้าที่ไม่เป็นไปตามข้อกำหนดถูกชี้บ่ง-กักกัน-ตัดสินใจโดยผู้มีอำนาจ ไม่หลุดปนกับของดีหรือถึงมือลูกค้า — ผู้ตรวจควรดูพื้นที่ Hold ที่ชัดเจน ป้ายชี้บ่ง และบันทึกการตัดสินใจ Release/Reject/Rework',
 cc:'มีระบบจัดการสินค้าไม่เป็นไปตามข้อกำหนด มีพื้นที่ Hold ชัดเจน มีบันทึก มีอำนาจตัดสินใจ',
 nc:'ไม่มีระบบจัดการ ไม่มีพื้นที่ Hold สินค้า Reject ปนกับสินค้าดี ไม่มีบันทึก',
 d:'Nonconforming Product Procedure, Hold/Release Records, Reject/Rework Records'},
 {kw:['ขนส่ง','transport','logistics','รถขนส่ง','โลจิสติกส์','จัดส่ง','delivery'],
+interp:'ตรวจว่าการขนส่งรักษาความปลอดภัยอาหารจนถึงมือลูกค้า — ผู้ตรวจควรดูความสะอาดและสภาพรถ การควบคุมอุณหภูมิระหว่างขนส่ง (สำหรับสินค้าควบคุมอุณหภูมิ) และการไม่ขนร่วมกับสิ่งที่ก่อให้เกิดการปนเปื้อน',
 cc:'รถขนส่งสะอาด อุณหภูมิเหมาะสม มีบันทึกตรวจสภาพ ไม่ขนร่วมกับสิ่งที่ไม่เข้ากัน',
 nc:'รถขนส่งสกปรก อุณหภูมิไม่เหมาะสม ไม่มีบันทึก ขนร่วมกับสิ่งที่ไม่เข้ากัน',
 d:'Transport Inspection Checklist, Temperature Records, Delivery Records'},
 {kw:['ประเด็น','บริบท','context','ภายใน','ภายนอก','ปัจจัย','สภาพแวดล้อม','swot','ส่วนได้ส่วนเสีย','stakeholder','ผู้มีส่วนได้'],
+interp:'ตรวจว่าองค์กรเข้าใจปัจจัยภายใน/ภายนอกและความต้องการของผู้มีส่วนได้เสียที่กระทบระบบ แล้วนำมาใช้วางแผนจริง ไม่ใช่ทำเอกสารทิ้งไว้ — ผู้ตรวจควรดูการทบทวนเป็นระยะและการเชื่อมโยงประเด็นเหล่านี้ไปสู่การประเมินความเสี่ยง',
 cc:'มีการระบุประเด็นภายใน/ภายนอกที่เกี่ยวข้อง ระบุผู้มีส่วนได้ส่วนเสียและความต้องการ ทบทวนเป็นระยะ',
 nc:'ไม่ระบุประเด็น/ผู้มีส่วนได้ส่วนเสีย ไม่ทบทวน ไม่ครอบคลุมประเด็นที่สำคัญ',
 d:'Context Analysis, Interested Parties List, Risk & Opportunity Register'},
 {kw:['นโยบาย','policy','วัตถุประสงค์','objective','เป้าหมาย','target','kpi'],
+interp:'ตรวจว่านโยบายถูกสื่อสารจนพนักงานเข้าใจ และถูกแปลงเป็นวัตถุประสงค์ที่ "วัดผลได้" พร้อมติดตามจริง — ผู้ตรวจควรสุ่มถามพนักงานถึงความเข้าใจนโยบาย และดูผล KPI เทียบกับเป้าหมายที่ตั้งไว้',
 cc:'มีนโยบายที่ชัดเจน สื่อสารทั่วถึง มีวัตถุประสงค์/เป้าหมายที่วัดได้ ทบทวนประจำปี',
 nc:'ไม่มีนโยบาย ไม่สื่อสาร ไม่มีวัตถุประสงค์ที่วัดได้ ไม่ทบทวน',
 d:'Policy Document, Objectives & Targets, KPI Records, Communication Records'},
 {kw:['บทบาท','ความรับผิดชอบ','หน้าที่','role','responsibility','authority','อำนาจ','แต่งตั้ง','ทีม','หัวหน้าทีม','food safety team'],
+interp:'ตรวจว่าบทบาท-อำนาจหน้าที่ถูกกำหนดและสื่อสารจนผู้ปฏิบัติทราบจริง — ผู้ตรวจควรสุ่มถามพนักงานว่ารู้หน้าที่และขอบเขตอำนาจของตนหรือไม่ เทียบกับคำสั่งแต่งตั้ง/Job Description โดยเฉพาะหัวหน้าทีมความปลอดภัยอาหาร',
 cc:'มีการกำหนดบทบาท/ความรับผิดชอบชัดเจน มีคำสั่งแต่งตั้ง สื่อสารให้ทราบ มีคุณสมบัติเหมาะสม',
 nc:'ไม่กำหนดบทบาท/ความรับผิดชอบ ไม่มีคำสั่งแต่งตั้ง ไม่สื่อสาร บุคลากรไม่ทราบหน้าที่',
 d:'Organization Chart, Appointment Letters, Job Descriptions, Responsibility Matrix'},
 {kw:['ขอบเขต','scope','ครอบคลุม','ผลิตภัณฑ์','กระบวนการ','process','site','สถานที่'],
+interp:'ตรวจว่าขอบเขตของระบบครอบคลุมผลิตภัณฑ์/กระบวนการ/สถานที่จริง และข้อยกเว้นมีเหตุผลรองรับ — ผู้ตรวจควรเทียบขอบเขตที่ประกาศกับการดำเนินงานจริงหน้างาน ว่าไม่มีส่วนที่ถูกตัดออกอย่างไม่เหมาะสม',
 cc:'ขอบเขตระบุชัดเจน ครอบคลุมทุกผลิตภัณฑ์/กระบวนการ/สถานที่ มีเอกสาร ไม่มีการยกเว้นที่ไม่เหมาะสม',
 nc:'ขอบเขตไม่ชัดเจน ไม่ครอบคลุม มีการยกเว้นโดยไม่มีเหตุผล ไม่เป็นเอกสาร',
 d:'Scope Statement, Process Map/Flow, Site Map, Exclusion Justification'},
 {kw:['สื่อสาร','communication','ภายใน','แจ้ง','ประชาสัมพันธ์','ประกาศ'],
+interp:'ตรวจว่าการสื่อสารทั้งภายใน/ภายนอกถึงผู้เกี่ยวข้องและมีหลักฐาน — ผู้ตรวจควรดูว่าองค์กรกำหนดเรื่อง/ช่องทาง/ผู้รับผิดชอบ/ความถี่ และพิสูจน์ว่าข้อมูลสำคัญ (เช่น การเปลี่ยนแปลงที่กระทบความปลอดภัยอาหาร) ถึงผู้ปฏิบัติจริง',
 cc:'มีระบบสื่อสารภายใน/ภายนอกที่มีประสิทธิภาพ กำหนดเรื่อง/ช่องทาง/ผู้รับผิดชอบ/ความถี่ มีหลักฐาน',
 nc:'ไม่มีระบบสื่อสาร ข้อมูลไม่ถึงผู้เกี่ยวข้อง ไม่มีหลักฐานการสื่อสาร',
 d:'Communication Procedure, บันทึกการประชุม, ประกาศ/บอร์ด, Email/Line Records'},
 {kw:['ความเสี่ยง','risk','โอกาส','opportunity','ประเมินความเสี่ยง','ลดความเสี่ยง'],
+interp:'ตรวจว่าองค์กรประเมินความเสี่ยง/โอกาสแล้วลงมือจัดการจริง พร้อมทบทวนประสิทธิผล ไม่ใช่แค่มีตารางความเสี่ยง — ผู้ตรวจควรดูการเชื่อมโยงจากความเสี่ยงที่ระบุไปสู่แผนปฏิบัติและผลลัพธ์ที่ตามมา',
 cc:'มีการประเมินความเสี่ยงและโอกาส มีแผนจัดการ ดำเนินการตามแผน ทบทวนประสิทธิผล',
 nc:'ไม่ประเมินความเสี่ยง ไม่มีแผนจัดการ ไม่ดำเนินการ ไม่ทบทวน',
 d:'Risk Assessment Matrix, Risk Treatment Plan, Opportunity Register, Review Records'},
 {kw:['ทรัพยากร','resource','งบประมาณ','budget','บุคลากร','โครงสร้างพื้นฐาน','infrastructure'],
+interp:'ตรวจว่าองค์กรจัดสรรทรัพยากร (คน-งบ-อุปกรณ์-โครงสร้างพื้นฐาน) เพียงพอต่อการรักษาระบบ และทบทวนความเพียงพอเมื่อสถานการณ์เปลี่ยน — ผู้ตรวจควรหาหลักฐานการจัดสรรที่ตอบสนองความต้องการจริง ไม่ใช่ระบุไว้แต่ไม่เกิดขึ้น',
 cc:'จัดสรรทรัพยากรเพียงพอ (บุคลากร งบประมาณ อุปกรณ์ โครงสร้างพื้นฐาน) ทบทวนความเพียงพอ',
 nc:'ทรัพยากรไม่เพียงพอ ไม่จัดสรรงบประมาณ บุคลากรไม่พอ โครงสร้างพื้นฐานบกพร่อง',
 d:'Resource Plan, Budget Records, Infrastructure Maintenance, HR Records'},
 {kw:['ผู้บริหาร','leadership','commitment','ภาวะผู้นำ','ผู้นำ','บริหารระดับสูง','top management'],
+interp:'ตรวจว่าผู้บริหารระดับสูงมีส่วนร่วมและรับผิดชอบต่อระบบจริง ไม่ใช่มอบหมายให้ฝ่ายใดฝ่ายหนึ่งแล้วลอยตัว — ผู้ตรวจควรหาหลักฐานการกำหนดทิศทาง การจัดสรรทรัพยากร การทบทวนระบบ และการสนับสนุนวัฒนธรรมความปลอดภัยอาหาร',
 cc:'ผู้บริหารแสดงภาวะผู้นำ กำหนดนโยบาย จัดสรรทรัพยากร ทบทวนระบบ สนับสนุนการปรับปรุง',
 nc:'ผู้บริหารไม่มีส่วนร่วม ไม่จัดสรรทรัพยากร ไม่ทบทวนระบบ ไม่สนับสนุน',
 d:'Management Review Minutes, Resource Allocation Records, Policy Sign-off'},
 {kw:['กฎหมาย','legal','regulatory','ข้อบังคับ','พรบ','มาตรฐานบังคับ','ราชกิจจา'],
+interp:'ตรวจว่าองค์กรระบุกฎหมาย/ข้อบังคับที่เกี่ยวข้องครบ ติดตามการเปลี่ยนแปลง และปฏิบัติตามจริง — ผู้ตรวจควรดู Legal Register ที่อัปเดต ใบอนุญาตที่ยังไม่หมดอายุ และการประเมินการปฏิบัติตามกฎหมาย (Compliance) อย่างเป็นระบบ',
 cc:'ระบุกฎหมายที่เกี่ยวข้องครบ ติดตามการเปลี่ยนแปลง ปฏิบัติตาม มีหลักฐาน ใบอนุญาตครบ',
 nc:'ไม่ระบุกฎหมายที่เกี่ยวข้อง ไม่ติดตามการเปลี่ยนแปลง ไม่ปฏิบัติตาม ใบอนุญาตหมดอายุ',
 d:'Legal Register, ใบอนุญาตต่างๆ, Compliance Assessment, Update Records'},
 {kw:['ปรับปรุง','improvement','continual','พัฒนา','ต่อเนื่อง','อัพเดต','update','เปลี่ยนแปลง','change'],
+interp:'ตรวจว่าองค์กรใช้ข้อมูลขับเคลื่อนการปรับปรุงอย่างต่อเนื่อง ไม่หยุดนิ่งหรือทำเฉพาะตอนถูกตรวจ — ผู้ตรวจควรดูการวิเคราะห์ข้อมูล (แนวโน้มข้อบกพร่อง/ข้อร้องเรียน) ที่นำไปสู่โครงการปรับปรุงที่มีผลติดตามได้จริง',
 cc:'มีระบบปรับปรุงอย่างต่อเนื่อง วิเคราะห์ข้อมูล กำหนดโครงการปรับปรุง ติดตามผล',
 nc:'ไม่มีระบบปรับปรุง ไม่วิเคราะห์ข้อมูล ไม่ดำเนินการปรับปรุง ไม่ติดตามผล',
 d:'Improvement Plan, Data Analysis, Project Records, Effectiveness Review'},
 {kw:['ตรวจสอบ','verification','ทวนสอบ','validation','ยืนยัน','ตรวจรับ','inspect'],
+interp:'ตรวจว่ามีการทวนสอบ/ตรวจรับรองว่าระบบทำงานได้ผลตามที่ออกแบบ — ผู้ตรวจควรแยกแยะ Validation (พิสูจน์ล่วงหน้าว่ามาตรการที่ออกแบบได้ผล) กับ Verification (ยืนยันภายหลังว่าทำตามจริงและยังได้ผล) และดูบันทึกผลที่เป็นที่ยอมรับ',
 cc:'มีระบบตรวจสอบ/ทวนสอบตามแผน ดำเนินการครบ ผลเป็นที่ยอมรับ มีบันทึก',
 nc:'ไม่มีระบบตรวจสอบ ดำเนินการไม่ครบ ผลไม่ผ่านแต่ไม่แก้ไข ไม่มีบันทึก',
 d:'Verification Plan, Validation Protocol, Inspection Records, Test Results'},
 {kw:['ภูมิอากาศ','climate','สภาพอากาศ','carbon','ก๊าซเรือนกระจก','สิ่งแวดล้อม','environment'],
+interp:'ตรวจว่าองค์กรพิจารณาผลกระทบจากการเปลี่ยนแปลงสภาพภูมิอากาศต่อความปลอดภัยอาหาร/การดำเนินงาน (ประเด็นใหม่ตาม ISO Amendment 2024) — ผู้ตรวจควรดูว่ามีการประเมินความเสี่ยงที่เกี่ยวข้องและแผนรับมือ ไม่ใช่ละเลยเพราะคิดว่าไม่เกี่ยวกับโรงงาน',
 cc:'มีการพิจารณาผลกระทบจากการเปลี่ยนแปลงสภาพภูมิอากาศ ระบุความเสี่ยง มีแผนรับมือ',
 nc:'ไม่พิจารณาผลกระทบจากสภาพภูมิอากาศ ไม่มีแผนรับมือ ไม่ประเมินความเสี่ยงที่เกี่ยวข้อง',
 d:'Climate Risk Assessment, Adaptation Plan, Environmental Monitoring Records'}
@@ -11671,7 +11746,7 @@ function generateAutoGuide(questionText,clauseText){
   if(matches.length===0)return null;
   matches.sort(function(a,b){return b.score-a.score;});
   var best=matches[0];
-  var guide={cc:best.topic.cc,nc:best.topic.nc,d:best.topic.d,auto:true};
+  var guide={interp:best.topic.interp||'',cc:best.topic.cc,nc:best.topic.nc,d:best.topic.d,auto:true};
   if(matches.length>1&&matches[1].score>=best.score*0.6){
     guide.cc+='\n\n[เพิ่มเติม] '+matches[1].topic.cc;
     guide.nc+='\n\n[เพิ่มเติม] '+matches[1].topic.nc;
@@ -11696,77 +11771,58 @@ function generateAutoGuide(questionText,clauseText){
   return guide;
 }
 function checkWritingProfessionalism(findingText,remarkText,selType){
-  // Learned from sample audits: best report (บรรจุ) = objective evidence with numbers/docs;
-  // worst (หม้อเคี่ยว) = vague + blaming; weak (พัสดุ) = hearsay + speculation.
+  // v5 calibrated: only flag clear anti-patterns from real audit data (AP-01..06).
+  // Do NOT flag legitimate audit language as unprofessional.
   var issues=[];
   var f=findingText||'';
   var r=remarkText||'';
-  // 1) Vague / subjective language (ไม่เป็นภาวะวิสัย)
-  var vaguePhrases=['ดูแล้วไม่โอเค','ไม่โอเคเลย','ดูไม่จริงจัง','ไม่รู้เรื่อง','ภาพรวมดูแย่',
-    'เท่าที่ดู','ดูจากสายตา','พอจะมีระบบ','คิดว่าโอเค','น่าจะโอเค','คงจะไม่ผ่าน',
-    'อาจจะมีปัญหา','หย่อนยาน','ใช้ไม่ได้เลย','แทบไม่มีระบบ','ไม่ค่อยมีอะไรน่าเชื่อถือ',
-    'ระบบหละหลวม','ดูแล้วโอเค','ทำได้ดีพอสมควร','ไม่เจอปัญหาอะไรเป็นพิเศษ','คิดว่าใช้ได้'];
-  var vagueFound=vaguePhrases.filter(function(p){return f.indexOf(p)>=0;});
-  if(vagueFound.length>0){
-    issues.push('ใช้ภาษาคลุมเครือ/ความเห็นส่วนตัว ("'+vagueFound.join('", "')+'") — ต้องเขียนเป็นข้อเท็จจริงเชิงประจักษ์ ระบุสิ่งที่ตรวจพบจริง พร้อมตัวเลข/เอกสาร');
+  // AP-05: Emotional/blaming — ISO 19011 Fair presentation + Integrity violation
+  var emotionalRe=/หย่อนยาน|ใช้ไม่ได้เลย|แทบไม่มีระบบ|ดูไม่จริงจัง|ไม่รู้เรื่อง|แย่\s*(มาก)?|ห่วย|ดูถูก|ไม่ใส่ใจงาน|พนักงานไม่ใส่ใจ|ไม่เอาไหน|สมควรถูกลงโทษ/;
+  var blameRe=/ให้ไปแก้เอง|ต้องรับผิดชอบ|ไปดูเองว่าผิด|ทำใหม่ทั้งหมด|หัวหน้า(แผนก)?ต้อง/;
+  if(emotionalRe.test(f)||emotionalRe.test(r)){
+    issues.push('ใช้ถ้อยคำเชิงอารมณ์/ตัดสิน — ละเมิด ISO 19011 Fair presentation ต้องบรรยายข้อเท็จจริงที่สังเกตได้อย่างเป็นกลาง');
   }
-  // 2) Hearsay without verification (เชื่อคำบอกเล่า ไม่ตรวจหลักฐาน)
-  var hearsayPhrases=['พนักงานบอกว่า','บอกว่าทำตามที่ควรทำ','บอกว่าทำอยู่แล้ว','บอกว่าทำไม่ทัน'];
-  var hearsayFound=hearsayPhrases.filter(function(p){return f.indexOf(p)>=0;});
-  if(hearsayFound.length>0){
-    issues.push('อ้างคำบอกเล่าโดยไม่มีหลักฐานยืนยัน ("'+hearsayFound.join('", "')+'") — ต้องตรวจสอบเอกสาร/บันทึก/การปฏิบัติจริง ไม่ใช่เชื่อคำพูดเพียงอย่างเดียว');
+  if(blameRe.test(f)||blameRe.test(r)){
+    issues.push('กล่าวโทษบุคคล — ละเมิด ISO 19011 Integrity ต้องระบุข้อบกพร่องของระบบ/กระบวนการ ไม่ใช่ตำหนิตัวบุคคล');
   }
-  // 3) Unprofessional / blaming remark (ใช้อารมณ์/กล่าวโทษ)
-  var blamePhrases=['ให้ไปแก้เอง','ต้องรับผิดชอบ','ไม่ใส่ใจงาน','ทำใหม่ทั้งหมด','ไปดูเองว่าผิดตรงไหน','แย่ ต้องทำใหม่'];
-  var blameFound=blamePhrases.filter(function(p){return f.indexOf(p)>=0||r.indexOf(p)>=0;});
-  if(blameFound.length>0){
-    issues.push('ถ้อยคำใช้อารมณ์/กล่าวโทษบุคคล ("'+blameFound.join('", "')+'") — รายงานต้องเป็นกลาง อิงข้อเท็จจริง ระบุข้อบกพร่องของระบบ ไม่ตำหนิตัวบุคคล');
+  // AP-03: Auditor-failure-as-NC — ลืมตรวจ/ข้ามไป แล้วติ๊ก NC = ผิด
+  if(selType==='NC'){
+    var auditorFailRe=/ลืมถาม|ลืมไป(เลย)?|ข้ามไป|ไม่ได้ถาม|ไม่ได้ตรวจ|ไม่ได้ขอดู|ขอข้ามก่อน|ยังไม่ได้ตรวจ/;
+    if(auditorFailRe.test(f)){
+      issues.push('NC ต้องเป็นข้อบกพร่องของผู้รับตรวจ ไม่ใช่ความล้มเหลวของผู้ตรวจ ("'+f.match(auditorFailRe)[0]+'") — ถ้ายังไม่ได้ตรวจ ต้องกลับไปเก็บหลักฐานก่อนสรุปผล');
+    }
   }
-  // 4) Informal/colloquial language (ภาษาไม่เป็นทางการ)
-  var informalPhrases=['อ่ะ','ค่ะ','ครับ','มั้ง','แหละ','ละกัน','เก้อๆ','กังๆ','งงๆ','น่าจะ','คิดว่า','เชื่อว่า','ลืม','ข้ามไป','ไม่ได้ถาม','ไม่ได้ขอดู','เฉยๆ','ก้อ','ก็อ','นะค้า','อะ','รึป่าว','เลยละ','ไม่แน่ใจ','จำไม่ได้','เดาว่า','คิดเอาเอง'];
-  var informalFound=informalPhrases.filter(function(p){return f.indexOf(p)>=0;});
-  if(informalFound.length>=2){
-    issues.push('[INFORMAL]ใช้ภาษาไม่เป็นทางการ ("'+informalFound.slice(0,3).join('", "')+'") — ควรใช้ภาษาเชิงรายงานที่เป็นทางการ');
+  // AP-02: Guess-as-evidence — ความเชื่อ/การเดา ≠ objective evidence
+  var guessRe=/น่าจะ(มี|ทำ|โอเค|ผ่าน|ได้)|คิดเอาเอง|มั้ง|เดาว่า|เชื่อว่ามี|คงจะ(มี|ผ่าน|ได้)|ไม่แน่ใจว่า(ทำ|มี)|รึป่าว/;
+  if(guessRe.test(f)){
+    issues.push('ใช้การคาดเดาแทนหลักฐาน ("'+f.match(guessRe)[0]+'") — ขัดหลักการ Evidence-based (ISO 19011) ต้องตรวจเอกสาร/บันทึก/สังเกตจริง');
   }
-  // 5) Too short for NC/B (less than 30 chars)
-  if((selType==='NC'||selType==='B')&&f.length>=10&&f.length<30){
-    issues.push(selType+' ควรอธิบายรายละเอียดมากกว่านี้ ('+f.length+' ตัวอักษร) — ระบุสิ่งที่ตรวจพบ หลักฐาน และผลกระทบ');
+  // AP-06+: Informal language (only clear colloquial markers, not legitimate audit words)
+  var informalRe=/อ่ะ|มั้ง|แหละ|ละกัน|เก้อๆ|กังๆ|งงๆ|เฉยๆ|ก้อ|ก็อ|นะค้า|รึป่าว|เลยละ|คิดเอาเอง/g;
+  var informalMatches=f.match(informalRe);
+  if(informalMatches&&informalMatches.length>=2){
+    issues.push('[INFORMAL]ใช้ภาษาไม่เป็นทางการ ("'+informalMatches.slice(0,3).join('", "')+'") — ควรใช้ภาษาเชิงรายงานที่เป็นทางการ');
   }
   return issues;
 }
 function checkFindingAgainstCriteria(findingText,selType,guide,questionText){
+  // v5: criteria/question keywords are EXAMPLES not exhaustive requirements.
+  // Auditor may find different but valid issues/evidence in the field.
+  // Only generate goods (recognition), never penalize for keyword mismatch.
   var results={issues:[],goods:[]};
   if(!guide||findingText.length<10)return results;
   var f=findingText;
   var criteria=selType==='C'?guide.cc:(selType==='NC'?guide.nc:guide.cc);
-  if(!criteria||criteria.length<3)return results;
-  var criteriaKw=extractKeywords(criteria);
-  var questionKw=extractKeywords(questionText);
-  var allCriteriaKw=criteriaKw.concat(questionKw);
-  var unique=[];
-  allCriteriaKw.forEach(function(w){if(unique.indexOf(w)<0)unique.push(w);});
-  allCriteriaKw=unique;
-  var matched=[];
-  allCriteriaKw.forEach(function(kw){if(f.indexOf(kw)>=0)matched.push(kw);});
-  var ratio=allCriteriaKw.length>0?matched.length/allCriteriaKw.length:0;
-  if(selType==='C'){
-    if(matched.length===0&&allCriteriaKw.length>=3){
-      results.issues.push('ผลการตรวจไม่ตรงกับเกณฑ์สอดคล้อง — เกณฑ์กำหนดว่า: "'+criteria+'" แต่ไม่พบเนื้อหาที่เกี่ยวข้องในผลการตรวจ');
-    }else if(ratio>=0.2||matched.length>=2){
-      results.goods.push('ผลการตรวจตรงกับเกณฑ์สอดคล้อง: "'+criteria.substring(0,60)+(criteria.length>60?'...':'')+'"');
-    }
-  }else if(selType==='NC'){
-    if(matched.length===0&&allCriteriaKw.length>=3){
-      results.issues.push('ผลการตรวจไม่ตรงกับเกณฑ์ไม่สอดคล้อง — เกณฑ์กำหนดว่า: "'+criteria+'" แต่ไม่พบเนื้อหาที่เกี่ยวข้องในผลการตรวจ');
-    }else if(ratio>=0.2||matched.length>=2){
-      results.goods.push('ผลการตรวจตรงกับเกณฑ์ไม่สอดคล้อง: "'+criteria.substring(0,60)+(criteria.length>60?'...':'')+'"');
-    }
-  }else if(selType==='B'){
-    var bothKw=extractKeywords((guide.cc||'')+' '+(guide.nc||''));
-    var bMatched=0;
-    bothKw.forEach(function(kw){if(f.indexOf(kw)>=0)bMatched++;});
-    if(bMatched===0&&bothKw.length>=3){
-      results.issues.push('ข้อสังเกตไม่เกี่ยวข้องกับประเด็นของข้อนี้ — ข้อนี้ตรวจเรื่อง: "'+criteria.substring(0,60)+(criteria.length>60?'...':'')+'"');
+  if(criteria&&criteria.length>=3){
+    var criteriaKw=extractKeywords(criteria);
+    var qTextCore=(questionText||'').replace(/เช่น[\s\S]*/,'').trim();
+    var questionKw=extractKeywords(qTextCore);
+    var allKw=criteriaKw.concat(questionKw);
+    var unique=[];allKw.forEach(function(w){if(unique.indexOf(w)<0)unique.push(w);});
+    var matched=[];unique.forEach(function(kw){if(f.indexOf(kw)>=0)matched.push(kw);});
+    if(matched.length>=2){
+      var label=selType==='C'?'สอดคล้อง':(selType==='NC'?'ไม่สอดคล้อง':'ข้อสังเกต');
+      results.goods.push('ผลการตรวจตรงกับเกณฑ์'+label+': "'+criteria.substring(0,60)+(criteria.length>60?'...':'')+'"');
     }
   }
   if(guide.d&&guide.d.length>2){
@@ -11774,15 +11830,11 @@ function checkFindingAgainstCriteria(findingText,selType,guide,questionText){
     var docMatched=[];
     docs.forEach(function(d){
       var parts=d.split(/[\s]+/).filter(function(p){return p.length>=3;});
-      var hit=parts.some(function(p){return f.indexOf(p)>=0;});
-      if(hit)docMatched.push(d);
+      if(parts.some(function(p){return f.indexOf(p)>=0;}))docMatched.push(d);
     });
     var evidenceWords=['เอกสาร','บันทึก','record','log','report','ทะเบียน','แบบฟอร์ม','form','checklist','รายงาน','ใบ','คู่มือ','manual','ตรวจสอบจาก','ตรวจดู','สังเกต','สัมภาษณ์','พบว่า','หลักฐาน','ใบรับรอง','certificate'];
-    var hasEvidence=evidenceWords.some(function(w){return f.indexOf(w)>=0;});
-    if(docMatched.length>0&&hasEvidence){
+    if(docMatched.length>0&&evidenceWords.some(function(w){return f.indexOf(w)>=0;})){
       results.goods.push('อ้างอิงเอกสารตรงกับที่คาดหวัง: '+docMatched.join(', '));
-    }else if(!hasEvidence&&selType==='C'){
-      results.issues.push('ไม่พบการอ้างอิงหลักฐาน — ข้อนี้ควรตรวจจาก: '+guide.d.substring(0,80));
     }
   }
   return results;
@@ -11918,8 +11970,7 @@ function showReviewReport(data){
   if(order.length>0){
     var sCount=(data.writingSuggestions&&data.writingSuggestions.length)||0;
     html+='<div class="review-section">';
-    html+='<div class="review-section-hdr">⚠️ Lead Auditor Review — รายข้อที่ต้องปรับปรุง <span class="badge badge-warn">'+order.length+' ข้อ</span>'
-        +(sCount>0?' <span class="badge" style="background:#facc15;color:#333;margin-left:4px">💡 มีตัวอย่างให้คัดลอก '+sCount+' ข้อ</span>':'')+'</div>';
+    html+='<div class="review-section-hdr">⚠️ Lead Auditor Review — รายข้อที่ต้องปรับปรุง <span class="badge badge-warn">'+order.length+' ข้อ</span></div>';
     order.forEach(function(n){
       var b=byN[n];
       var jumpAttr=' onclick="jumpToRow(\''+String(n).replace(/'/g,"\\'")+'\')" ';
@@ -11941,9 +11992,8 @@ function showReviewReport(data){
         if(b.issues.length===0){
           html+='<div class="clickable" style="padding:4px 0"'+jumpAttr+'><span class="suggestion">• '+escHtml(w.coaching)+(w.score!=null?' ('+w.score+'%)':'')+'</span></div>';
         }
-        html+='<div style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;background:#fffbeb;border:1px dashed #facc15;border-radius:8px;padding:8px 10px">';
-        html+='<div style="flex:1;font-size:.9em;color:#444"><b style="color:#a16207">✍️ ตัวอย่างที่แนะนำ (คัดลอกไปแก้ไขได้):</b><br>'+escHtml(w.suggested)+'</div>';
-        html+='<button class="copy-suggest-btn" data-copy="'+escHtml(w.suggested).replace(/"/g,'&quot;')+'" style="flex-shrink:0;background:#1B6B93;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:.8em;cursor:pointer;font-weight:600">📋 คัดลอก</button>';
+        html+='<div style="margin-top:6px;background:#fffbeb;border:1px dashed #facc15;border-radius:8px;padding:8px 10px">';
+        html+='<div style="font-size:.9em;color:#444"><b style="color:#a16207">✍️ ตัวอย่างที่แนะนำ:</b><br>'+escHtml(w.suggested)+'</div>';
         html+='</div>';
       }
       html+='</div>';
@@ -11968,15 +12018,6 @@ function showReviewReport(data){
   html+='• <b>Fair Presentation (ISO 19011):</b> รายงานต้องสะท้อนข้อเท็จจริง ถูกต้อง ครบถ้วน เป็นกลาง';
   html+='</div>';
   container.innerHTML=html;
-  container.addEventListener('click',function(e){
-    var btn=e.target.closest&&e.target.closest('.copy-suggest-btn');
-    if(!btn)return;
-    e.stopPropagation();
-    var txt=btn.getAttribute('data-copy')||'';
-    var done=function(){var o=btn.textContent;btn.textContent='✓ คัดลอกแล้ว';btn.style.background='#28a745';setTimeout(function(){btn.textContent=o;btn.style.background='#1B6B93';},1500);};
-    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){done();});}
-    else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(err){}document.body.removeChild(ta);done();}
-  });
   overlay.appendChild(toolbar);
   overlay.appendChild(container);
   var scrollBtn=document.createElement('button');
@@ -11985,8 +12026,17 @@ function showReviewReport(data){
   scrollBtn.title='กลับขึ้นบนสุด';
   scrollBtn.onclick=function(){overlay.scrollTo({top:0,behavior:'smooth'});};
   overlay.appendChild(scrollBtn);
+  var scrollDownBtn=document.createElement('button');
+  scrollDownBtn.className='review-scroll-top-btn';
+  scrollDownBtn.style.bottom='90px';
+  scrollDownBtn.innerHTML='&#x2B07;';
+  scrollDownBtn.title='เลื่อนลงล่างสุด';
+  scrollDownBtn.onclick=function(){overlay.scrollTo({top:overlay.scrollHeight,behavior:'smooth'});};
+  overlay.appendChild(scrollDownBtn);
   overlay.addEventListener('scroll',function(){
+    var atBottom=overlay.scrollTop+overlay.clientHeight>=overlay.scrollHeight-200;
     if(overlay.scrollTop>300)scrollBtn.classList.add('show');else scrollBtn.classList.remove('show');
+    if(!atBottom&&overlay.scrollHeight>overlay.clientHeight+400)scrollDownBtn.classList.add('show');else scrollDownBtn.classList.remove('show');
   });
   document.body.appendChild(overlay);
   document.body.style.overflow='hidden';
@@ -12069,14 +12119,7 @@ function doPrintPreview(){
     span.textContent=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'';
     sel.parentNode.replaceChild(span,sel);
   });
-  var photoSection=document.getElementById('photoPrintSection');
-  if(photoSection){
-    var photoClone=photoSection.cloneNode(true);
-    photoClone.style.display='block';
-    photoClone.style.pageBreakBefore='always';
-    photoClone.style.marginTop='30px';
-    clone.appendChild(photoClone);
-  }
+  // Photo section hidden from print per user request
   if(lastAuditScore!==null){
     var scoreBadge=document.createElement('div');
     scoreBadge.style.cssText='position:absolute;top:12px;right:24px;background:#1B6B93;color:#fff;padding:6px 14px;border-radius:8px;font-size:14px;font-weight:700;z-index:10;';
