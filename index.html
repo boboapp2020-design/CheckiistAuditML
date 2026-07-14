@@ -1226,25 +1226,37 @@ function parseExcelChecklist(data){
     var ws=wb.Sheets[sheetName];
     if(!ws)return;
     if(!deptName){
-      var r6=ws['A6'];
-      if(r6){
-        var dVal=typeof r6.v==='string'?r6.v:'';
-        var m=dVal.match(/แผนก[\s…\.]+(.+?)[\s…\.]*$/);
-        if(m)deptName=m[1].replace(/[…\.]+$/,'').trim();
-        if(!deptName){
-          var cleaned=dVal.replace(/^แผนก/,'').replace(/[…\.]+/g,' ').trim();
+      for(var dr=3;dr<=6&&!deptName;dr++){
+        var dCell=ws['A'+dr];
+        if(!dCell||typeof dCell.v!=='string')continue;
+        var dVal=dCell.v;
+        var cand=null;
+        var m1=dVal.match(/(?:แผนก\s*\/\s*หน่วยงาน|หน่วยงาน)\s*[:：]\s*(.+)/);
+        if(m1)cand=m1[1];
+        if(!cand){var m1b=dVal.match(/แผนก\s*[:：]\s*(.+)/);if(m1b)cand=m1b[1];}
+        if(!cand){var m2=dVal.match(/Person in chart\s*\)\s*(.+)/i);if(m2)cand=m2[1];}
+        if(!cand){var m3=dVal.match(/แผนก[\s…\.]+(.+?)[\s…\.]*$/);if(m3)cand=m3[1];}
+        if(cand){
+          cand=cand.replace(/^[\s.…]+|[\s.…]+$/g,'').trim();
+          if(cand.length>1)deptName=cand;
+        }
+      }
+      if(!deptName){
+        var r6=ws['A6'];
+        if(r6&&typeof r6.v==='string'){
+          var cleaned=r6.v.replace(/^แผนก/,'').replace(/[…\.]+/g,' ').trim();
           if(cleaned.length>1)deptName=cleaned;
         }
       }
     }
     if(!auditee){
-      var cells=['J4','K4','L4'];
+      var cells=['H3','J4','K4','L4'];
       for(var ci=0;ci<cells.length;ci++){
         var c=ws[cells[ci]];
         if(c&&c.v){var av=String(c.v).replace(/[…\.]+/g,'').trim();if(av&&av.length>1){auditee=av;break;}}
       }
     }
-    for(var r=11;r<=100;r++){
+    for(var r=1;r<=100;r++){
       var cellA=ws['A'+r];
       if(!cellA)continue;
       var num=cellA.v;
