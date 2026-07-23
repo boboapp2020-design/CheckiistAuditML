@@ -64,6 +64,27 @@ body{font-family:'Segoe UI',Tahoma,Geneva,sans-serif;background:linear-gradient(
   padding:10px 16px;font-size:.9em;font-weight:600;cursor:pointer;
 }
 .btn-clear:hover{background:#f2f8fb}
+.btn-dash{
+  background:linear-gradient(135deg,#e67e22,#c0392b);color:#fff;border:none;
+  border-radius:10px;padding:10px 18px;font-size:.9em;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:transform .15s ease,box-shadow .15s ease;
+  box-shadow:0 6px 16px rgba(192,57,43,.25);
+}
+.btn-dash:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(192,57,43,.32)}
+.btn-dash.active{background:linear-gradient(135deg,#c0392b,#922b21)}
+
+.dash-panel{margin-top:16px;border-top:1.5px dashed var(--border);padding-top:16px}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:760px){.dash-grid{grid-template-columns:1fr}}
+.dash-card{border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;background:#fbfdfe}
+.dash-card h3{font-size:.92em;margin-bottom:12px;color:var(--text);display:flex;align-items:center;gap:6px}
+.dash-item{margin-bottom:10px}
+.dash-item:last-child{margin-bottom:0}
+.dash-label{display:flex;justify-content:space-between;gap:10px;font-size:.85em;margin-bottom:4px;color:var(--text)}
+.dash-label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-label b{color:#c0392b;flex-shrink:0}
+.dash-bar-bg{height:8px;background:#eef3f6;border-radius:6px;overflow:hidden}
+.dash-bar-fill{height:100%;background:linear-gradient(90deg,#e67e22,#c0392b);border-radius:6px}
 
 .summary-bar{display:flex;gap:18px;flex-wrap:wrap;margin:16px 0 4px;font-size:.85em;color:var(--text-light)}
 .summary-bar b{color:var(--text)}
@@ -89,6 +110,12 @@ body{font-family:'Segoe UI',Tahoma,Geneva,sans-serif;background:linear-gradient(
 .rec-mid{display:flex;gap:22px;flex-wrap:wrap;margin-top:8px;font-size:.85em;color:var(--text-light)}
 .rec-mid b{color:var(--text)}
 .rec-score{font-size:1.3em;font-weight:900;min-width:56px;text-align:center}
+.rec-del-btn{
+  width:32px;height:32px;border-radius:50%;border:none;background:#fdeaea;color:#c0392b;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1em;
+  flex-shrink:0;transition:background .15s ease,transform .15s ease;
+}
+.rec-del-btn:hover{background:#f8d2d2;transform:scale(1.08)}
 
 .rec-detail{display:none;margin-top:12px;border-top:1.5px dashed var(--border);padding-top:12px}
 .rec-detail.open{display:block}
@@ -111,6 +138,33 @@ body{font-family:'Segoe UI',Tahoma,Geneva,sans-serif;background:linear-gradient(
   .f-group select,.f-group input{min-width:0;width:100%}
   .rec-mid{gap:12px}
 }
+
+.pin-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(20,40,55,.55);
+  z-index:10000;display:none;align-items:center;justify-content:center;padding:16px;
+}
+.pin-overlay.open{display:flex}
+.pin-box{
+  background:#fff;border-radius:18px;max-width:340px;width:100%;padding:26px 24px;
+  box-shadow:0 25px 60px rgba(0,0,0,.3);text-align:center;
+}
+.pin-box h3{font-size:1.1em;color:var(--text);margin-bottom:6px}
+.pin-box p{font-size:.85em;color:var(--text-light);margin-bottom:16px;line-height:1.5}
+.pin-input{
+  width:160px;margin:0 auto;display:block;text-align:center;letter-spacing:10px;
+  font-size:1.6em;font-weight:800;border:1.5px solid var(--border);border-radius:12px;
+  padding:10px 8px 10px 18px;color:var(--text);font-family:inherit;
+}
+.pin-input:focus{outline:none;border-color:var(--primary-med)}
+.pin-error{color:#c0392b;font-size:.82em;margin-top:10px;min-height:1.2em;font-weight:600}
+.pin-btns{display:flex;gap:10px;margin-top:18px}
+.pin-btns button{
+  flex:1;border-radius:10px;padding:10px;font-size:.9em;font-weight:700;cursor:pointer;
+  border:1.5px solid var(--border);background:#fff;color:var(--text-light);
+  transition:transform .15s ease;
+}
+.pin-btns .pin-confirm{background:#c0392b;border-color:#c0392b;color:#fff}
+.pin-btns button:hover{transform:translateY(-2px)}
 </style>
 </head>
 <body>
@@ -156,10 +210,36 @@ body{font-family:'Segoe UI',Tahoma,Geneva,sans-serif;background:linear-gradient(
       </div>
       <button class="btn-search" onclick="applyFilters()">&#x1F50D; ค้นหา</button>
       <button class="btn-clear" onclick="clearFilters()">ล้างตัวกรอง</button>
+      <button class="btn-dash" id="btnDashboard" onclick="toggleDashboard()">&#x1F4CA; แดชบอร์ด</button>
+    </div>
+    <div class="dash-panel" id="dashPanel" style="display:none">
+      <div class="dash-grid">
+        <div class="dash-card">
+          <h3>&#x1F3ED; แผนกที่มี NC/CAR มากที่สุด</h3>
+          <div id="dashByDept"></div>
+        </div>
+        <div class="dash-card">
+          <h3>&#x1F4CB; ข้อกำหนดที่ออก NC/CAR มากที่สุด (Top 10)</h3>
+          <div id="dashByClause"></div>
+        </div>
+      </div>
     </div>
     <div class="summary-bar" id="summaryBar"></div>
     <div id="listArea">
       <div class="loading-state"><div class="ico">&#x23F3;</div>กำลังโหลดข้อมูล...</div>
+    </div>
+  </div>
+</div>
+
+<div class="pin-overlay" id="pinOverlay">
+  <div class="pin-box">
+    <h3>&#128465;&#65039; ยืนยันการลบ</h3>
+    <p>กรุณาใส่ PIN 4 หลักเพื่อยืนยันการลบประวัติการตรวจนี้<br>การลบจะไม่สามารถกู้คืนได้</p>
+    <input type="password" class="pin-input" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+    <div class="pin-error" id="pinError"></div>
+    <div class="pin-btns">
+      <button onclick="closePinModal()">ยกเลิก</button>
+      <button class="pin-confirm" onclick="confirmDelete()">ยืนยันลบ</button>
     </div>
   </div>
 </div>
@@ -199,7 +279,7 @@ function loadHistory(){
     populateDeptFilter();
     applyFilters();
   }
-  fetch(GSHEET_WEBAPP_URL,{method:'GET'})
+  fetch(GSHEET_WEBAPP_URL,{method:'GET',cache:'no-store'})
     .then(function(r){return r.json();})
     .then(function(res){
       if(res.status!=='ok'){throw new Error(res.message||'unknown error');}
@@ -296,6 +376,94 @@ function applyFilters(){
   });
 
   renderList(list);
+  if(dashboardOpen)renderDashboard();
+}
+
+// ---- Dashboard: NC/CAR by department & by clause ----
+var NC_CACHE_KEY='smartiqa_history_ncdetail_cache_v1';
+var NC_DETAIL=null;
+var dashboardOpen=false;
+
+function toggleDashboard(){
+  dashboardOpen=!dashboardOpen;
+  document.getElementById('dashPanel').style.display=dashboardOpen?'block':'none';
+  document.getElementById('btnDashboard').classList.toggle('active',dashboardOpen);
+  if(dashboardOpen)renderDashboard();
+}
+
+function renderDashboard(){
+  renderDashByDept();
+  if(NC_DETAIL){
+    renderDashByClause();
+    return;
+  }
+  var cached=readNcCache();
+  if(cached){NC_DETAIL=cached;renderDashByClause();}
+  else document.getElementById('dashByClause').innerHTML='<div style="color:var(--text-light);font-size:.85em">&#x23F3; กำลังโหลด...</div>';
+  fetch(GSHEET_WEBAPP_URL+'?action=ncdetail',{method:'GET',cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(res){
+      if(res.status!=='ok')throw new Error(res.message||'unknown error');
+      NC_DETAIL=res.data;
+      writeNcCache(NC_DETAIL);
+      renderDashByClause();
+    })
+    .catch(function(err){
+      if(!cached){
+        document.getElementById('dashByClause').innerHTML='<div style="color:#c0392b;font-size:.85em">โหลดข้อมูลไม่สำเร็จ: '+escHtml(err.message||err)+'</div>';
+      }
+    });
+}
+
+function readNcCache(){
+  try{
+    var raw=localStorage.getItem(NC_CACHE_KEY);
+    return raw?JSON.parse(raw):null;
+  }catch(e){return null;}
+}
+function writeNcCache(data){
+  try{localStorage.setItem(NC_CACHE_KEY,JSON.stringify(data));}catch(e){}
+}
+
+function renderDashByDept(){
+  var sys=document.getElementById('fSystem').value;
+  var counts={};
+  ALL_RECORDS.forEach(function(r){
+    if(sys&&r.system!==sys)return;
+    if(!r.dept)return;
+    counts[r.dept]=(counts[r.dept]||0)+(Number(r.ncCount)||0);
+  });
+  renderBarList('dashByDept',counts,'ไม่มีข้อมูล NC');
+}
+
+function renderDashByClause(){
+  var sys=document.getElementById('fSystem').value;
+  var counts={};
+  (NC_DETAIL||[]).forEach(function(d){
+    if(sys&&d.system!==sys)return;
+    var c=d.clause||'(ไม่ระบุ)';
+    counts[c]=(counts[c]||0)+1;
+  });
+  renderBarList('dashByClause',counts,'ไม่มีข้อมูล NC',10);
+}
+
+function renderBarList(elId,counts,emptyMsg,topN){
+  var entries=Object.keys(counts).map(function(k){return [k,counts[k]];});
+  entries.sort(function(a,b){return b[1]-a[1];});
+  if(topN)entries=entries.slice(0,topN);
+  var el=document.getElementById(elId);
+  if(entries.length===0||entries[0][1]===0){
+    el.innerHTML='<div style="color:var(--text-light);font-size:.85em">'+emptyMsg+'</div>';
+    return;
+  }
+  var max=entries[0][1];
+  el.innerHTML=entries.map(function(e){
+    var pct=Math.round(e[1]/max*100);
+    return '<div class="dash-item">'+
+      '<div class="dash-label"><span title="'+escHtml(e[0])+'">'+escHtml(e[0])+'</span><b>'+e[1]+'</b></div>'+
+      '<div class="dash-bar-bg"><div class="dash-bar-fill" style="width:'+pct+'%"></div></div>'+
+    '</div>';
+  }).join('');
 }
 
 function renderList(list){
@@ -317,6 +485,7 @@ function renderList(list){
         '<span class="rec-grade '+gradeClass(r.grade)+'">'+escHtml(r.grade)+'</span>'+
         '<span class="rec-score">'+escHtml(r.score)+'</span>'+
         '<span class="rec-date">'+fmtDate(r.auditDate||r.timestamp)+'</span>'+
+        '<button class="rec-del-btn" title="ลบประวัตินี้" onclick="event.stopPropagation();openPinModal(\''+idx+'\')">&#128465;&#65039;</button>'+
       '</div>'+
       '<div class="rec-mid">'+
         '<div>ผู้ตรวจ: <b>'+escHtml(r.auditor)+'</b></div>'+
@@ -366,7 +535,7 @@ function toggleDetail(idx){
     +'&timestamp='+encodeURIComponent(r.timestamp)
     +'&dept='+encodeURIComponent(r.dept)
     +'&auditor='+encodeURIComponent(r.auditor);
-  fetch(url,{method:'GET'})
+  fetch(url,{method:'GET',cache:'no-store'})
     .then(function(res){return res.json();})
     .then(function(res){
       if(res.status!=='ok')throw new Error(res.message||'unknown error');
@@ -381,6 +550,80 @@ function toggleDetail(idx){
 document.getElementById('fSearch').addEventListener('keydown',function(ev){
   if(ev.key==='Enter')applyFilters();
 });
+
+var PIN_TARGET_IDX=null;
+
+function openPinModal(idx){
+  PIN_TARGET_IDX=idx;
+  document.getElementById('pinInput').value='';
+  document.getElementById('pinError').textContent='';
+  document.getElementById('pinOverlay').classList.add('open');
+  document.getElementById('pinInput').focus();
+}
+function closePinModal(){
+  document.getElementById('pinOverlay').classList.remove('open');
+  PIN_TARGET_IDX=null;
+}
+document.getElementById('pinOverlay').addEventListener('click',function(ev){
+  if(ev.target===this)closePinModal();
+});
+document.getElementById('pinInput').addEventListener('keydown',function(ev){
+  if(ev.key==='Enter')confirmDelete();
+});
+
+function confirmDelete(){
+  var pin=document.getElementById('pinInput').value.trim();
+  var errEl=document.getElementById('pinError');
+  if(!/^\d{4}$/.test(pin)){
+    errEl.textContent='กรุณาใส่ PIN 4 หลัก';
+    return;
+  }
+  var r=window._filteredList[PIN_TARGET_IDX];
+  if(!r)return closePinModal();
+
+  var confirmBtn=document.querySelector('.pin-confirm');
+  confirmBtn.disabled=true;
+  confirmBtn.textContent='กำลังลบ...';
+  errEl.textContent='';
+
+  fetch(GSHEET_WEBAPP_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({
+      action:'delete',pin:pin,
+      system:r.system,timestamp:r.timestamp,dept:r.dept,auditor:r.auditor
+    })
+  })
+    .then(function(res){return res.json();})
+    .then(function(res){
+      confirmBtn.disabled=false;
+      confirmBtn.textContent='ยืนยันลบ';
+      if(res.status!=='ok'){
+        errEl.textContent=res.message||'ลบไม่สำเร็จ';
+        return;
+      }
+      removeRecordFromData(r);
+      closePinModal();
+      applyFilters();
+    })
+    .catch(function(err){
+      confirmBtn.disabled=false;
+      confirmBtn.textContent='ยืนยันลบ';
+      errEl.textContent='เกิดข้อผิดพลาด: '+(err.message||err);
+    });
+}
+
+function removeRecordFromData(r){
+  var idx=ALL_RECORDS.indexOf(r);
+  if(idx>=0)ALL_RECORDS.splice(idx,1);
+  var bucket=RAW_DATA&&RAW_DATA[r.system];
+  if(bucket&&bucket.summary){
+    bucket.summary=bucket.summary.filter(function(s){
+      return !(s['Timestamp']===r.timestamp&&s['แผนก']===r.dept&&s['ผู้ตรวจ (Auditor)']===r.auditor);
+    });
+    writeCache(RAW_DATA);
+  }
+}
 
 loadHistory();
 </script>
