@@ -3348,6 +3348,27 @@ var ML_CHAT=(function(){
     }catch(e){ return false; }
   }
 
+  // ให้เหลือผู้เชี่ยวชาญเดียวคือคุณภาพและมาตรฐาน
+  //
+  // ใช้ CSS ไม่ใช่การลบ element เพราะแอปเรียก renderRooms() ใหม่ทุกครั้งที่มี
+  // การเปลี่ยนแปลง ถ้าลบทิ้งเดี๋ยวมันก็ขึ้นมาใหม่ แต่ CSS ใน <head> อยู่ทน
+  //
+  // ปิดทางสลับผู้เชี่ยวชาญทั้ง 2 ทาง: รายการใน sidebar และ command palette
+  function lockToOneExpert(doc){
+    try{
+      if(!doc||doc.getElementById('mlOnlyFoodsafety'))return false;
+      var s=doc.createElement('style');
+      s.id='mlOnlyFoodsafety';
+      s.textContent=
+        '#rooms .room:not([data-room="'+ROOM+'"]){display:none!important}'+
+        '#btnShowAll{display:none!important}'+
+        '#pal{display:none!important}'+
+        '#side .grp{display:none!important}';   // ตัวนับ "บทสนทนา 9/9" ที่จะไม่ตรงความจริงแล้ว
+      doc.head.appendChild(s);
+      return true;
+    }catch(e){ return false; }
+  }
+
   function failNote(){
     load.innerHTML='<div class="ml-fail">เปิดผู้ช่วยในหน้านี้ไม่ได้<br>'+
       'อาจเพราะกำลังเปิดไฟล์จากเครื่องโดยตรง (file://) ซึ่งใช้ค่าที่ตั้งไว้ร่วมกันไม่ได้<br><br>'+
@@ -3359,7 +3380,13 @@ var ML_CHAT=(function(){
     loaded=true;
     var sameOrigin=(location.origin==='https://boboapp2020-design.github.io');
     if(sameOrigin) pinRoom();
-    frame.onload=function(){ load.style.display='none'; };
+    frame.onload=function(){
+      load.style.display='none';
+      // ฉีดทุกครั้งที่เฟรมโหลด ถ้าแอปข้างในรีโหลด style เดิมจะหายไป
+      var ok=lockToOneExpert(frame.contentDocument);
+      // แอปเรนเดอร์ sidebar หลัง DOMContentLoaded เล็กน้อย ลองซ้ำอีกรอบให้ชัวร์
+      if(!ok) setTimeout(function(){ lockToOneExpert(frame.contentDocument); },600);
+    };
     frame.onerror=function(){ failNote(); };
     frame.src=APP;
     // ถ้า 25 วิแล้วยังไม่ onload ให้บอกทางออก ไม่ปล่อยให้หมุนค้าง
@@ -3405,6 +3432,7 @@ var ML_CHAT=(function(){
           isLoaded:function(){return loaded;}};
 })();
 </script>
+
 
 
 
