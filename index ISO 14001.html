@@ -3329,12 +3329,20 @@ var ML_CHAT=(function(){
 
   function el(id){return document.getElementById(id);}
 
-  // ปักห้องไว้ที่โมดูลคุณภาพและมาตรฐาน โดย "รวม" เข้ากับค่าเดิม
-  // ห้ามเขียนทับ เพราะ mlx_cfg เก็บ API key และรุ่นโมเดลที่ผู้ใช้ตั้งไว้ด้วย
+  // ปักห้องเป็นคุณภาพและมาตรฐาน และบังคับโหมด supabase ทุกครั้งที่เปิด
+  //
+  // ทำไมต้องบังคับโหมด: หน้านี้ใช้ localStorage ร่วมกับแอป MLChatbot เดิม
+  // ถ้าผู้ใช้เคยสลับไปโหมดยิงตรงเข้า provider (ซึ่งต้องมี API key ของตัวเอง)
+  // ค่านั้นจะติดมาที่หน้า checklist ด้วย แล้วผู้ใช้ที่ไม่มีคีย์จะใช้ไม่ได้เลย
+  // โหมด supabase ใช้เซิร์ฟเวอร์กลางของโรงงาน ทุกคนจึงใช้ได้โดยไม่ต้องมีคีย์
+  //
+  // ใช้วิธี "รวม" ค่าเสมอ ห้ามเขียนทับทั้งก้อน เพราะ mlx_cfg เก็บ API key
+  // และรุ่นโมเดลที่ผู้ใช้ตั้งไว้เองด้วย เขียนทับแล้วของเขาจะหาย
   function pinRoom(){
     try{
       var cfg=JSON.parse(localStorage.getItem('mlx_cfg')||'{}');
       cfg.room=ROOM;
+      cfg.mode='supabase';
       localStorage.setItem('mlx_cfg',JSON.stringify(cfg));
       return true;
     }catch(e){ return false; }
@@ -3397,6 +3405,7 @@ var ML_CHAT=(function(){
           isLoaded:function(){return loaded;}};
 })();
 </script>
+
 
 
 
