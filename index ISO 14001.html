@@ -3300,6 +3300,9 @@ function thaiWordSegment(text){
 .ml-send{background:#1B6B93;border:none;color:#fff;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:15px;flex-shrink:0}
 .ml-send:disabled{background:#9db8c4;cursor:default}
 .ml-note{font-size:10.5px;color:#94a7b0;padding:0 14px 8px;background:#f7fafb;line-height:1.5}
+.scroll-top-btn{display:flex !important;bottom:148px !important}
+.scroll-bottom-btn{display:flex !important;bottom:88px !important}
+@media(max-width:520px){.scroll-top-btn{bottom:138px !important}.scroll-bottom-btn{bottom:78px !important}}
 @media print{#mlChatLauncher,#mlChatWin{display:none !important}}
 @media(max-width:520px){#mlChatWin{right:10px;left:10px;width:auto;bottom:10px;height:70vh}}
 </style>
@@ -3327,7 +3330,7 @@ var ML_CHAT=(function(){
   // แก้ URL นี้ให้ตรงกับ Edge Function ของคุณ (Dashboard > Edge Functions > audit-chat)
   var FN_URL='https://YOUR-PROJECT-REF.supabase.co/functions/v1/audit-chat';
 
-  var CHIPS=['ข้อ 5.3 ต้องดูหลักฐานอะไร','CCP มีกี่จุด ค่าวิกฤตเท่าไหร่','เขียน Finding ยังไงให้ครบ','แผนกนี้ต้องเตรียมอะไรรับตรวจ'];
+  var CHIPS=['ข้อ 5.3 ต้องดูหลักฐานอะไร','ซักต่อยังไงให้รู้ว่าทำจริง','เขียน Finding ยังไงให้ครบ','แผนกนี้ต้องเตรียมอะไรรับตรวจ'];
   var win,body,chips,input,sendBtn,launcher,sub;
   var state='closed', busy=false, greeted=false;
   var sessionId='s'+Date.now()+Math.random().toString(36).slice(2,8);
