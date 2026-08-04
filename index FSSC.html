@@ -2195,6 +2195,13 @@ function doAuditReview(){
   };
   showReviewReport(lastReviewData);
 }
+// พิมพ์ด้วยวิธีไหนก็บันทึกเข้าประวัติ
+// เดิมผูกไว้กับ doPrint() อย่างเดียว ซึ่งเรียกได้จากปุ่ม "พิมพ์เลย" เท่านั้น
+// ถ้าผู้ใช้กด Ctrl+P หรือสั่งพิมพ์จากเมนูเบราว์เซอร์ รายงานจะไม่ถูกบันทึกเลย
+// saveAuditToHistory() มีตัวกันซ้ำและกันกรณียังไม่ผ่านรีวิวอยู่แล้ว จึงเรียกซ้ำได้ปลอดภัย
+window.addEventListener('beforeprint',function(){
+  try{ saveAuditToHistory(); }catch(e){}
+});
 function buildHistoryDetails(dept){
   var rows=[];
   dept.questions.forEach(function(q){
