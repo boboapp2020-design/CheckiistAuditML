@@ -1545,17 +1545,56 @@ function triggerPhotoInput(camera){
   var inp=camera?document.getElementById('photoCameraInput'):document.getElementById('photoFileInput');
   inp.value='';inp.click();
 }
+// ย่อภาพก่อนเก็บ เพื่อไม่ให้ไฟล์ JSON บวมจนเซฟและโหลดช้า
+// ถ้าย่อไม่สำเร็จหรือย่อแล้วใหญ่กว่าเดิม จะคืนภาพต้นฉบับเสมอ
+// ภาพคือหลักฐานการตรวจ ยอมให้ไฟล์ใหญ่ดีกว่าเสี่ยงภาพเสีย
+var PHOTO_MAX_EDGE=1600, PHOTO_QUALITY=0.75;
+function compressPhotoDataUrl(dataUrl,cb){
+  try{
+    if(typeof dataUrl!=="string"||dataUrl.indexOf("data:image/")!==0)return cb(dataUrl);
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+        if(!w||!h)return cb(dataUrl);
+        var scale=Math.min(1,PHOTO_MAX_EDGE/Math.max(w,h));
+        var cw=Math.max(1,Math.round(w*scale)), ch=Math.max(1,Math.round(h*scale));
+        var cv=document.createElement("canvas");cv.width=cw;cv.height=ch;
+        var ctx=cv.getContext("2d");
+        // ภาพ PNG โปร่งใสจะกลายเป็นดำเมื่อแปลงเป็น JPEG จึงรองพื้นขาวไว้ก่อน
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,cw,ch);
+        ctx.drawImage(img,0,0,cw,ch);
+        var out=cv.toDataURL("image/jpeg",PHOTO_QUALITY);
+        if(!out||out.length>=dataUrl.length)return cb(dataUrl);
+        cb(out);
+      }catch(e){ cb(dataUrl); }
+    };
+    img.onerror=function(){ cb(dataUrl); };
+    img.src=dataUrl;
+  }catch(e){ cb(dataUrl); }
+}
 function handlePhotoInput(input){
   var files=input.files;if(!files||files.length===0)return;
   var key=_photoModalKey;
   document.getElementById('photoModalOverlay').style.display='none';
   _photoModalKey=null;
+  var totalBefore=0,totalAfter=0,pending=0;
   Array.prototype.forEach.call(files,function(file){
+    pending++;
     var reader=new FileReader();
     reader.onload=function(ev){
-      if(!photos[key])photos[key]=[];
-      photos[key].push(ev.target.result);
-      renderThumbs(key);
+      var original=ev.target.result;
+      compressPhotoDataUrl(original,function(finalUrl){
+        if(!photos[key])photos[key]=[];
+        photos[key].push(finalUrl);
+        totalBefore+=original.length; totalAfter+=finalUrl.length;
+        renderThumbs(key);
+        if(--pending===0&&totalBefore>0){
+          var mbA=(totalBefore/1048576).toFixed(1), mbB=(totalAfter/1048576).toFixed(1);
+          if(totalAfter<totalBefore*0.9)
+            showToast("ย่อภาพแล้ว "+mbA+" MB -> "+mbB+" MB");
+        }
+      });
     };
     reader.readAsDataURL(file);
   });
