@@ -1836,7 +1836,14 @@ function restoreState(state){
   currentDeptIdx=state.deptIdx;
   var dept=DEPT_DATA[currentDeptIdx];
   if(state.questionData){state.questionData.forEach(function(qd,i){if(dept.questions[i]){dept.questions[i]._result=qd._result||'';dept.questions[i]._remark=qd._remark||'';dept.questions[i]._sel_C=!!qd._sel_C;dept.questions[i]._sel_NC=!!qd._sel_NC;dept.questions[i]._sel_B=!!qd._sel_B;}});}
-  addedRows=state.addedRows||[];showAuditPage();
+  addedRows=state.addedRows||[];
+  // ต้องคืนค่ารูปก่อนเรียก showAuditPage() เพราะ showAuditPage สร้างตาราง
+  // และช่องรูปทั้งหมด ถ้าตั้งทีหลังช่องรูปจะถูกวาดตอน photos ยังว่าง รูปเลยไม่ขึ้น
+  photos=state.photos||{};
+  showAuditPage();
+  // ตารางเพิ่งถูกวาดเสร็จ ค่อยวาดรูปย่อซ้ำอีกรอบ
+  // ตอนสร้างแถว ช่อง td ยังไม่อยู่ใน DOM renderThumbs จึงหา container ไม่เจอ
+  redrawRestoredThumbs();
   setTimeout(function(){
     setAuditeeValues(state.auditees||[state.auditee||'']);
     document.getElementById('fAuditor').value=state.auditor||'';
@@ -1846,7 +1853,7 @@ function restoreState(state){
     if(state.sigAuditeeData)restoreSig('sigAuditee',state.sigAuditeeData);
     if(state.sigAuditorData)restoreSig('sigAuditor',state.sigAuditorData);
   },120);
-  if(state.photos){photos=state.photos;}showToast('โหลดข้อมูลสำเร็จ: '+(state.deptName||dept.name));
+  showToast('โหลดข้อมูลสำเร็จ: '+(state.deptName||dept.name));
 }
 function restoreSig(id,dataUrl){if(!dataUrl||dataUrl==='data:,')return;var c=document.getElementById(id);if(!c)return;var img=new Image();img.onload=function(){c.getContext('2d').drawImage(img,0,0);};img.src=dataUrl;}
 // ===== PHOTO FEATURE =====
@@ -1863,6 +1870,13 @@ function renderPhotoCell(cell,key){
   renderThumbs(key);
 }
 
+function redrawRestoredThumbs(){
+  try{
+    Object.keys(photos||{}).forEach(function(k){
+      if((photos[k]||[]).length) renderThumbs(k);
+    });
+  }catch(e){}
+}
 function renderThumbs(key){
   var container=document.getElementById('thumbs_'+key);if(!container)return;
   container.innerHTML='';
